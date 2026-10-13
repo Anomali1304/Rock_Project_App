@@ -1,9 +1,5 @@
 package com.rockproject.mt6789.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,7 +14,7 @@ import com.rockproject.mt6789.data.KernelConstants
 import com.rockproject.mt6789.model.StockFloors
 import com.rockproject.mt6789.ui.components.CardWithBadge
 import com.rockproject.mt6789.ui.components.CustomSliderField
-import com.rockproject.mt6789.ui.components.PillButton
+import com.rockproject.mt6789.ui.components.OcActionButtons
 import com.rockproject.mt6789.ui.theme.RockTheme
 
 @Composable
@@ -92,39 +88,13 @@ fun CpuOcScreen(
                 lineHeight = 17.sp
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                AnimatedVisibility(
-                    visible = isRestoreVisible,
-                    enter = fadeIn(animationSpec = tween(200)),
-                    exit = fadeOut(animationSpec = tween(200))
-                ) {
-                    PillButton(
-                        text = "Restore stock",
-                        isPrimary = false,
-                        enabled = canApply,
-                        onClick = onRestore,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                AnimatedVisibility(
-                    visible = isDirty,
-                    enter = fadeIn(animationSpec = tween(200)),
-                    exit = fadeOut(animationSpec = tween(200))
-                ) {
-                    PillButton(
-                        text = "Apply",
-                        isPrimary = true,
-                        enabled = canApply,
-                        onClick = onApply,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
+            OcActionButtons(
+                isRestoreVisible = isRestoreVisible,
+                isApplyVisible = isDirty,
+                canApply = canApply,
+                onRestore = onRestore,
+                onApply = onApply
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))

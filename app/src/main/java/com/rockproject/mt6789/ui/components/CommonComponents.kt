@@ -588,6 +588,140 @@ fun PillButton(
 }
 
 @Composable
+fun OcActionButtons(
+    isRestoreVisible: Boolean,
+    isApplyVisible: Boolean,
+    canApply: Boolean,
+    onRestore: () -> Unit,
+    onApply: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val anyVisible = isRestoreVisible || isApplyVisible
+
+    AnimatedVisibility(
+        visible = anyVisible,
+        enter = expandVertically(
+            animationSpec = spring(
+                dampingRatio = 0.85f,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            expandFrom = Alignment.Top
+        ) + fadeIn(
+            animationSpec = tween(durationMillis = 260, easing = LinearOutSlowInEasing)
+        ),
+        exit = shrinkVertically(
+            animationSpec = spring(
+                dampingRatio = 0.95f,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            shrinkTowards = Alignment.Top
+        ) + fadeOut(
+            animationSpec = tween(durationMillis = 200, easing = FastOutLinearInEasing)
+        ),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        val restoreTargetWeight = if (isRestoreVisible) 1f else 0.0001f
+        val applyTargetWeight = if (isApplyVisible) 1f else 0.0001f
+
+        val restoreWeight by animateFloatAsState(
+            targetValue = restoreTargetWeight,
+            animationSpec = spring(
+                dampingRatio = 0.85f,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "restoreWeight"
+        )
+        val applyWeight by animateFloatAsState(
+            targetValue = applyTargetWeight,
+            animationSpec = spring(
+                dampingRatio = 0.85f,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "applyWeight"
+        )
+
+        val restoreAlpha by animateFloatAsState(
+            targetValue = if (isRestoreVisible) 1f else 0f,
+            animationSpec = tween(
+                durationMillis = 220,
+                easing = if (isRestoreVisible) LinearOutSlowInEasing else FastOutLinearInEasing
+            ),
+            label = "restoreAlpha"
+        )
+        val applyAlpha by animateFloatAsState(
+            targetValue = if (isApplyVisible) 1f else 0f,
+            animationSpec = tween(
+                durationMillis = 220,
+                easing = if (isApplyVisible) LinearOutSlowInEasing else FastOutLinearInEasing
+            ),
+            label = "applyAlpha"
+        )
+
+        val bothVisible = isRestoreVisible && isApplyVisible
+        val animatedSpacing by animateDpAsState(
+            targetValue = if (bothVisible) 10.dp else 0.dp,
+            animationSpec = spring(
+                dampingRatio = 0.85f,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "actionSpacing"
+        )
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Spacer(modifier = Modifier.height(18.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(animatedSpacing),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (restoreWeight > 0.002f || isRestoreVisible) {
+                    Box(
+                        modifier = Modifier
+                            .weight(restoreWeight.coerceAtLeast(0.0001f))
+                            .graphicsLayer {
+                                alpha = restoreAlpha
+                                val s = (0.92f + 0.08f * restoreAlpha).coerceIn(0f, 1f)
+                                scaleX = s
+                                scaleY = s
+                            }
+                    ) {
+                        PillButton(
+                            text = "Restore stock",
+                            isPrimary = false,
+                            enabled = canApply,
+                            onClick = onRestore,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                if (applyWeight > 0.002f || isApplyVisible) {
+                    Box(
+                        modifier = Modifier
+                            .weight(applyWeight.coerceAtLeast(0.0001f))
+                            .graphicsLayer {
+                                alpha = applyAlpha
+                                val s = (0.92f + 0.08f * applyAlpha).coerceIn(0f, 1f)
+                                scaleX = s
+                                scaleY = s
+                            }
+                    ) {
+                        PillButton(
+                            text = "Apply",
+                            isPrimary = true,
+                            enabled = canApply,
+                            onClick = onApply,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
 fun ControlFieldItem(
     label: String,
     currentValue: String,
