@@ -54,7 +54,20 @@ object HardwareRepository {
     }
 
     suspend fun resolveGpuPowerPolicy(): String? {
-        val res = ShellManager.exec("find /sys/devices/platform/soc -type f -name power_policy 2>/dev/null | head -n 1")
+        val directCandidates = listOf(
+            "/sys/devices/platform/soc/13000000.mali/power_policy",
+            "/sys/devices/platform/soc/13040000.mali/power_policy",
+            "/sys/class/misc/mali0/device/power_policy",
+            "/sys/module/mali_kbase/parameters/power_policy"
+        )
+        for (c in directCandidates) {
+            val check = ShellManager.exec("test -f $c && echo ok")
+            if (check.stdout == "ok") {
+                gpuPowerPolicy = c
+                return c
+            }
+        }
+        val res = ShellManager.exec("find /sys/devices/platform -type f -name power_policy 2>/dev/null | head -n 1")
         if (res.isSuccess && res.stdout.isNotBlank()) {
             gpuPowerPolicy = res.stdout.trim()
         }
@@ -460,11 +473,24 @@ object HardwareRepository {
     }
 
     suspend fun setGpuGovernor(gov: String): Pair<Boolean, String> {
+        val cleanGov = gov.trim()
         val policyPath = gpuPowerPolicy ?: resolveGpuPowerPolicy()
         if (policyPath.isNullOrBlank()) return false to "GPU power_policy node not found"
 
-        val ok = ShellManager.exec("echo $gov > $policyPath 2>&1").isSuccess
-        return if (ok) true to "GPU governor: $gov" else false to "Failed"
+        // Ensure writable node
+        ShellManager.exec("chmod 664 $policyPath 2>/dev/null; chown root:root $policyPath 2>/dev/null")
+        val writeRes = ShellManager.exec("echo '$cleanGov' > $policyPath 2>&1")
+        delay(30)
+
+        val checkRes = ShellManager.exec("cat $policyPath 2>/dev/null")
+        val activeGov = ConversionUtils.parseActiveGov(checkRes.stdout) ?: checkRes.stdout.trim()
+
+        return if (activeGov.equals(cleanGov, ignoreCase = true) || writeRes.isSuccess) {
+            true to "GPU governor: $cleanGov"
+        } else {
+            val err = writeRes.stderr.ifEmpty { writeRes.stdout }.take(40).ifEmpty { "Rejected" }
+            false to "Failed ($err)"
+        }
     }
 
     suspend fun setGpuMinFreq(oppIdx: Int): Pair<Boolean, String> {
@@ -478,8 +504,21 @@ object HardwareRepository {
     }
 
     suspend fun setCpuGovernor(policyPath: String, clusterLabel: String, gov: String): Pair<Boolean, String> {
-        val ok = ShellManager.exec("echo $gov > $policyPath/scaling_governor 2>&1").isSuccess
-        return if (ok) true to "$clusterLabel gov: $gov" else false to "Failed"
+        val cleanGov = gov.trim()
+        val govNode = "$policyPath/scaling_governor"
+
+        // Ensure permissions on scaling_governor node
+        ShellManager.exec("chmod 664 $govNode 2>/dev/null; chown root:root $govNode 2>/dev/null")
+        val writeRes = ShellManager.exec("echo '$cleanGov' > $govNode 2>&1")
+        delay(30)
+
+        val curGov = ShellManager.exec("cat $govNode 2>/dev/null").stdout.trim()
+        return if (curGov.equals(cleanGov, ignoreCase = true) || writeRes.isSuccess) {
+            true to "$clusterLabel gov: $cleanGov"
+        } else {
+            val err = writeRes.stderr.ifEmpty { writeRes.stdout }.take(40).ifEmpty { "Rejected by kernel" }
+            false to "$clusterLabel gov failed ($err)"
+        }
     }
 
     private suspend fun readCpuBounds(policyPath: String): Pair<Long, Long> {
