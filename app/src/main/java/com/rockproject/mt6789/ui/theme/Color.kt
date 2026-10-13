@@ -1,0 +1,37 @@
+package com.rockproject.mt6789.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val DarkBackground = Color(0xFF000000)
+val DarkSurface = Color(0xFF171718)
+val DarkSurfaceRaised = Color(0xFF242426)
+val DarkSurfaceHigh = Color(0xFF303033)
+val DarkSurfaceTranslucent = Color(0xCC1A1A1C)
+val DarkBorder = Color(0x1AFFFFFF)
+val DarkBorderLight = Color(0x2EFFFFFF)
+val DarkSeparator = Color(0x1AFFFFFF)
+val DarkLabel = Color(0xFFFFFFFF)
+val DarkLabelSecondary = Color(0xFFD7D7DC)
+val DarkLabelTertiary = Color(0xFF929298)
+
+val LightBackground = Color(0xFFFFFFFF)
+val LightSurface = Color(0xFFF3F4F7)
+val LightSurfaceRaised = Color(0xFFFFFFFF)
+val LightSurfaceHigh = Color(0xFFE6E7EC)
+val LightSurfaceTranslucent = Color(0xCCF8F8FA)
+val LightBorder = Color(0x14000000)
+val LightBorderLight = Color(0x24000000)
+val LightSeparator = Color(0x14000000)
+val LightLabel = Color(0xFF000000)
+val LightLabelSecondary = Color(0xFF3A3A3F)
+val LightLabelTertiary = Color(0xFF7D7D84)
+
+val AccentBlueDark = Color(0xFF3E91FF)
+val AccentBlueLight = Color(0xFF0381FE)
+val AccentGreen = Color(0xFF3DDC6B)
+val AccentRedDark = Color(0xFFFF5A52)
+val AccentRedLight = Color(0xFFE5322B)
+val AccentOrange = Color(0xFFFFA626)
+val AccentPurple = Color(0xFFBF5AF2)
+val AccentMint = Color(0xFF2DE0A8)
+val AccentMintInk = Color(0xFF04231A)

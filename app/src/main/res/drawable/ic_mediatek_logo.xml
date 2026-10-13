@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="76dp"
+    android:height="28dp"
+    android:viewportWidth="152"
+    android:viewportHeight="56">
+    <!-- MediaTek Orange Parallelogram background -->
+    <path
+        android:fillColor="#FF5300"
+        android:pathData="M18,0 L152,0 L134,56 L0,56 Z" />
+    <!-- White MediaTek Wordmark -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M26,17 h6.5 l4.5,11 l4.5,-11 h6.5 v22 h-4.5 v-13.5 l-4.5,13.5 h-4 l-4.5,-13.5 v13.5 h-4.5 z M59,17 h4.5 v22 h-4.5 z M69,17 h4.5 v8.5 h9 v-8.5 h4.5 v22 h-4.5 v-9 h-9 v9 h-4.5 z M94,17 h4.5 v8.5 h9 v-8.5 h4.5 v22 h-4.5 v-9 h-9 v9 h-4.5 z M116,17 h4.5 v9 h7 v-9 h4.5 v22 h-4.5 v-9 h-7 v9 h-4.5 z" />
+</vector>

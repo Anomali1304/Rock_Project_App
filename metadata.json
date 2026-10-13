@@ -1,0 +1,6 @@
+{
+  "name": "Rock Project",
+  "description": "MT6789 CPU/GPU overclock kernel module controller for POCO M5 / MediaTek Helio G99 with live telemetry and boot apply",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
