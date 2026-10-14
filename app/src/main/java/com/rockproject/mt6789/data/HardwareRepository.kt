@@ -507,17 +507,23 @@ object HardwareRepository {
         val cleanGov = gov.trim()
         val govNode = "$policyPath/scaling_governor"
 
-        // Ensure permissions on scaling_governor node
-        ShellManager.exec("chmod 664 $govNode 2>/dev/null; chown root:root $govNode 2>/dev/null")
-        val writeRes = ShellManager.exec("echo '$cleanGov' > $govNode 2>&1")
-        delay(30)
+        // Execute chmod 0644, echo, and chmod 0444 in a single root session
+        val script = """
+            f="$govNode"
+            chmod 0644 "${'$'}f"
+            echo '$cleanGov' > "${'$'}f" 2>&1
+            chmod 0444 "${'$'}f"
+            cat "${'$'}f" 2>/dev/null
+        """.trimIndent()
 
-        val curGov = ShellManager.exec("cat $govNode 2>/dev/null").stdout.trim()
-        return if (curGov.equals(cleanGov, ignoreCase = true) || writeRes.isSuccess) {
+        val res = ShellManager.exec(script)
+        val curGov = res.stdout.lines().lastOrNull { it.isNotBlank() }?.trim() ?: ""
+
+        return if (curGov.equals(cleanGov, ignoreCase = true)) {
             true to "$clusterLabel gov: $cleanGov"
         } else {
-            val err = writeRes.stderr.ifEmpty { writeRes.stdout }.take(40).ifEmpty { "Rejected by kernel" }
-            false to "$clusterLabel gov failed ($err)"
+            val err = if (curGov.isNotEmpty()) "got '$curGov'" else res.stderr.ifEmpty { "rejected" }.take(30)
+            false to "$clusterLabel gov failed: $err"
         }
     }
 

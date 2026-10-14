@@ -437,11 +437,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val p0 = HardwareRepository.cpuPolicy0
         val p6 = HardwareRepository.cpuPolicy6
 
-        if (!p0.isNullOrBlank() && _cpuLittleControl.value.currentGovernor.isNotBlank() && _cpuLittleControl.value.currentGovernor != "—") {
-            controlCmds.add("echo ${_cpuLittleControl.value.currentGovernor} > $p0/scaling_governor 2>>\"\$LOG\"")
+        val littleGov = _cpuLittleControl.value.currentGovernor.trim()
+        if (!p0.isNullOrBlank() && littleGov.isNotBlank() && littleGov != "—") {
+            controlCmds.add("""
+f="$p0/scaling_governor"
+if [ -f "${'$'}f" ]; then
+  chmod 0644 "${'$'}f"
+  echo '$littleGov' > "${'$'}f" 2>>"${'$'}LOG"
+  chmod 0444 "${'$'}f"
+  cur=${'$'}(cat "${'$'}f" 2>/dev/null)
+  if [ "${'$'}cur" = '$littleGov' ]; then
+    log "policy Little ($p0) gov set to $littleGov"
+  else
+    log "ERROR: policy Little ($p0) gov failed: expected '$littleGov', got '${'$'}cur'"
+    cpu_ok=0
+  fi
+fi
+            """.trimIndent())
         }
-        if (!p6.isNullOrBlank() && _cpuBigControl.value.currentGovernor.isNotBlank() && _cpuBigControl.value.currentGovernor != "—") {
-            controlCmds.add("echo ${_cpuBigControl.value.currentGovernor} > $p6/scaling_governor 2>>\"\$LOG\"")
+
+        val bigGov = _cpuBigControl.value.currentGovernor.trim()
+        if (!p6.isNullOrBlank() && bigGov.isNotBlank() && bigGov != "—") {
+            controlCmds.add("""
+f="$p6/scaling_governor"
+if [ -f "${'$'}f" ]; then
+  chmod 0644 "${'$'}f"
+  echo '$bigGov' > "${'$'}f" 2>>"${'$'}LOG"
+  chmod 0444 "${'$'}f"
+  cur=${'$'}(cat "${'$'}f" 2>/dev/null)
+  if [ "${'$'}cur" = '$bigGov' ]; then
+    log "policy Big ($p6) gov set to $bigGov"
+  else
+    log "ERROR: policy Big ($p6) gov failed: expected '$bigGov', got '${'$'}cur'"
+    cpu_ok=0
+  fi
+fi
+            """.trimIndent())
         }
 
         BootApplyManager.saveBootApplyScript(
