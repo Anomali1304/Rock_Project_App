@@ -28,14 +28,12 @@ fun CpuMenuScreen(
                 icon = Icons.Default.Bolt,
                 iconBgColor = colors.blue,
                 title = "Overclock",
-                subtitle = "Target frequency",
                 onClick = onNavigateCpuOc
             )
             MenuListRow(
                 icon = Icons.Default.Tune,
                 iconBgColor = colors.purple,
                 title = "Control",
-                subtitle = "Governor · min/max freq",
                 onClick = onNavigateCpuControl,
                 showDivider = false
             )

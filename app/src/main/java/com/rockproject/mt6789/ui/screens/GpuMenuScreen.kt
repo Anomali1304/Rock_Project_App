@@ -28,14 +28,12 @@ fun GpuMenuScreen(
                 icon = Icons.Default.Bolt,
                 iconBgColor = colors.blue,
                 title = "Overclock",
-                subtitle = "Freq · volt · vsram",
                 onClick = onNavigateGpuOc
             )
             MenuListRow(
                 icon = Icons.Default.Tune,
                 iconBgColor = colors.purple,
                 title = "Control",
-                subtitle = "Governor · min/max freq",
                 onClick = onNavigateGpuControl,
                 showDivider = false
             )

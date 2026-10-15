@@ -383,7 +383,7 @@ fun MenuListRow(
     icon: ImageVector,
     iconBgColor: Color,
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     onClick: () -> Unit,
     showDivider: Boolean = true
 ) {
@@ -425,13 +425,15 @@ fun MenuListRow(
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Medium
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    color = colors.labelTertiary,
-                    fontSize = 13.sp,
-                    fontFamily = FontFamily.Monospace
-                )
+                if (!subtitle.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        color = colors.labelTertiary,
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
