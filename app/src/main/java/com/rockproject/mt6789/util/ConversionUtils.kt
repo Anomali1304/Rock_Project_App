@@ -32,18 +32,22 @@ object ConversionUtils {
 
     fun parseCpuResult(text: String?): CpuParsedResult? {
         if (text.isNullOrBlank()) return null
-        val llPattern = Pattern.compile("LL(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
-        val bPattern = Pattern.compile("b(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
+        val llPattern = Pattern.compile("(?:LL|little)(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
+        val bPattern = Pattern.compile("(?:b|big)(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
+        val primePattern = Pattern.compile("prime(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
 
         val llMatcher = llPattern.matcher(text)
         val bMatcher = bPattern.matcher(text)
+        val primeMatcher = primePattern.matcher(text)
 
         if (llMatcher.find() && bMatcher.find()) {
             val llKhz = llMatcher.group(1)?.toLongOrNull() ?: return null
             val bKhz = bMatcher.group(1)?.toLongOrNull() ?: return null
+            val primeKhz = if (primeMatcher.find()) primeMatcher.group(1)?.toLongOrNull() else null
             return CpuParsedResult(
                 llMhz = khzToMhz(llKhz),
-                bMhz = khzToMhz(bKhz)
+                bMhz = khzToMhz(bKhz),
+                primeMhz = primeKhz?.takeIf { it > 0 }?.let { khzToMhz(it) }
             )
         }
         return null
@@ -112,10 +116,13 @@ object ConversionUtils {
         effLLKhz: Long,
         effBKhz: Long,
         stockLLKhz: Long,
-        stockBKhz: Long
+        stockBKhz: Long,
+        effPrimeKhz: Long = 0L,
+        stockPrimeKhz: Long = 0L
     ): Boolean {
         val known = stockLLKhz > 0 && stockBKhz > 0
-        return known && (effLLKhz > stockLLKhz || effBKhz > stockBKhz)
+        val primeOc = stockPrimeKhz > 0 && effPrimeKhz > stockPrimeKhz
+        return known && (effLLKhz > stockLLKhz || effBKhz > stockBKhz || primeOc)
     }
 
     fun isGpuOcRequested(

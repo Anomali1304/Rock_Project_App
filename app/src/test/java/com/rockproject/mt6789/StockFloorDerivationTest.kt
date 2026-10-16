@@ -57,6 +57,57 @@ class StockFloorDerivationTest {
     }
 
     @Test
+    fun `test baseline json parsing with prime`() {
+        val json = """
+            {
+              "captured_at": 1697150000,
+              "gpu": { "freq_khz": 1000000, "volt_raw": 73500, "vsram_raw": 73500 },
+              "cpu": { "ll_khz": 2000000, "b_khz": 2200000, "prime_khz": 2400000 }
+            }
+        """.trimIndent()
+
+        val parsed = BaselineRepository.parseBaselineJson(json)
+        assertNotNull(parsed)
+        assertEquals(2400000L, parsed!!.cpu.prime_khz)
+    }
+
+    @Test
+    fun `test stock floor derivation values with prime`() {
+        val floors2p = StockFloors(
+            cpuLLMin = 2000,
+            cpuBMin = 2200,
+            cpuPrimeMin = null,
+            isPrimeActive = false,
+            gpuFreqMin = 1000,
+            gpuVoltMin = 735
+        )
+        assertTrue(floors2p.isCpuKnown)
+        assertTrue(floors2p.isFullyKnown)
+
+        val floors3pMissingPrime = StockFloors(
+            cpuLLMin = 2000,
+            cpuBMin = 2200,
+            cpuPrimeMin = null,
+            isPrimeActive = true,
+            gpuFreqMin = 1000,
+            gpuVoltMin = 735
+        )
+        assertFalse(floors3pMissingPrime.isCpuKnown)
+        assertFalse(floors3pMissingPrime.isFullyKnown)
+
+        val floors3pComplete = StockFloors(
+            cpuLLMin = 2000,
+            cpuBMin = 2200,
+            cpuPrimeMin = 2400,
+            isPrimeActive = true,
+            gpuFreqMin = 1000,
+            gpuVoltMin = 735
+        )
+        assertTrue(floors3pComplete.isCpuKnown)
+        assertTrue(floors3pComplete.isFullyKnown)
+    }
+
+    @Test
     fun `test unknown baseline safety check`() {
         val unknownFloors = StockFloors()
         assertFalse(unknownFloors.isCpuKnown)

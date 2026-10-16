@@ -12,7 +12,8 @@ data class GpuBaseline(
 
 data class CpuBaseline(
     val ll_khz: Long = 0,
-    val b_khz: Long = 0
+    val b_khz: Long = 0,
+    val prime_khz: Long = 0
 )
 
 data class StockBaseline(
@@ -24,17 +25,20 @@ data class StockBaseline(
 data class StockFloors(
     val cpuLLMin: Int? = null,
     val cpuBMin: Int? = null,
+    val cpuPrimeMin: Int? = null,
+    val isPrimeActive: Boolean = false,
     val gpuFreqMin: Int? = null,
     val gpuVoltMin: Int? = null
 ) {
-    val isCpuKnown: Boolean get() = cpuLLMin != null && cpuBMin != null
+    val isCpuKnown: Boolean get() = cpuLLMin != null && cpuBMin != null && (!isPrimeActive || cpuPrimeMin != null)
     val isGpuKnown: Boolean get() = gpuFreqMin != null && gpuVoltMin != null
     val isFullyKnown: Boolean get() = isCpuKnown && isGpuKnown
 }
 
 data class CpuParsedResult(
     val llMhz: Double,
-    val bMhz: Double
+    val bMhz: Double,
+    val primeMhz: Double? = null
 )
 
 data class GpuParsedResult(
@@ -77,6 +81,8 @@ data class ModuleState(
 data class LiveHardwareStats(
     val cpuLLCurMhz: String = "—",
     val cpuBCurMhz: String = "—",
+    val cpuPrimeCurMhz: String = "—",
+    val isPrimeActive: Boolean = false,
     val cpuStatus: String = "Stock",
     val isCpuActive: Boolean = false,
     val gpuCurFreqMhz: String = "—",

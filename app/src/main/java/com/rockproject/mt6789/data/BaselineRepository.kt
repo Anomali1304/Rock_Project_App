@@ -31,7 +31,8 @@ object BaselineRepository {
             )
             val cpu = CpuBaseline(
                 ll_khz = cpuObj?.optLong("ll_khz", 0L) ?: 0L,
-                b_khz = cpuObj?.optLong("b_khz", 0L) ?: 0L
+                b_khz = cpuObj?.optLong("b_khz", 0L) ?: 0L,
+                prime_khz = cpuObj?.optLong("prime_khz", 0L) ?: 0L
             )
             if (gpu.freq_khz > 0 || cpu.ll_khz > 0) {
                 return StockBaseline(captured_at = capturedAt, gpu = gpu, cpu = cpu)
@@ -51,11 +52,12 @@ object BaselineRepository {
             val gVsram = findLong("vsram_raw")
             val cLL = findLong("ll_khz")
             val cB = findLong("b_khz")
+            val cPrime = findLong("prime_khz")
             if (gFreq > 0 || cLL > 0) {
                 StockBaseline(
                     captured_at = captured,
                     gpu = GpuBaseline(freq_khz = gFreq, volt_raw = gVolt, vsram_raw = gVsram),
-                    cpu = CpuBaseline(ll_khz = cLL, b_khz = cB)
+                    cpu = CpuBaseline(ll_khz = cLL, b_khz = cB, prime_khz = cPrime)
                 )
             } else null
         } catch (_: Exception) {
@@ -66,6 +68,7 @@ object BaselineRepository {
     suspend fun captureBaselineIfStock(
         policy0Path: String?,
         policy6Path: String?,
+        policyPrimePath: String? = null,
         gpuFreqParamName: String
     ): Boolean {
         // Never overwrite an existing valid baseline
@@ -79,12 +82,15 @@ object BaselineRepository {
         if (testMod.stdout != "ok") return false
 
         // Check if any OC is currently active
-        val cll = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
-        val cb = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
+        val cll = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_little_target_khz 2>/dev/null").stdout.toLongOrNull()
+            ?: ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
+        val cb = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_big_target_khz 2>/dev/null").stdout.toLongOrNull()
+            ?: ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
+        val cPrime = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_prime_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
         val gFreq = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/$gpuFreqParamName 2>/dev/null").stdout.toLongOrNull() ?: 0L
 
         // If any target is non-zero, OC is active -> do NOT capture baseline blind!
-        if (cll > 0L || cb > 0L || gFreq > 0L) {
+        if (cll > 0L || cb > 0L || cPrime > 0L || gFreq > 0L) {
             return false
         }
 
@@ -104,6 +110,7 @@ object BaselineRepository {
 
         var cpuLLKhz = 0L
         var cpuBKhz = 0L
+        var cpuPrimeKhz = 0L
         if (!policy0Path.isNullOrBlank()) {
             val r = ShellManager.exec("cat $policy0Path/cpuinfo_max_freq 2>/dev/null")
             cpuLLKhz = r.stdout.toLongOrNull() ?: 0L
@@ -111,6 +118,10 @@ object BaselineRepository {
         if (!policy6Path.isNullOrBlank()) {
             val r = ShellManager.exec("cat $policy6Path/cpuinfo_max_freq 2>/dev/null")
             cpuBKhz = r.stdout.toLongOrNull() ?: 0L
+        }
+        if (!policyPrimePath.isNullOrBlank()) {
+            val r = ShellManager.exec("cat $policyPrimePath/cpuinfo_max_freq 2>/dev/null")
+            cpuPrimeKhz = r.stdout.toLongOrNull() ?: 0L
         }
 
         if (gpuFreqKhz <= 0 || cpuLLKhz <= 0 || cpuBKhz <= 0) {
@@ -122,7 +133,7 @@ object BaselineRepository {
             {
               "captured_at": $capturedAt,
               "gpu": { "freq_khz": $gpuFreqKhz, "volt_raw": $gpuVoltRaw, "vsram_raw": $gpuVsramRaw },
-              "cpu": { "ll_khz": $cpuLLKhz, "b_khz": $cpuBKhz }
+              "cpu": { "ll_khz": $cpuLLKhz, "b_khz": $cpuBKhz, "prime_khz": $cpuPrimeKhz }
             }
         """.trimIndent()
 
@@ -136,12 +147,16 @@ object BaselineRepository {
 
     suspend fun deriveStockFloors(
         policy0Path: String?,
-        policy6Path: String?
+        policy6Path: String?,
+        policyPrimePath: String? = null,
+        primeStatus: String = "inactive"
     ): StockFloors {
         var gpuFreqMin: Int? = null
         var gpuVoltMin: Int? = null
         var cpuLLMin: Int? = null
         var cpuBMin: Int? = null
+        var cpuPrimeMin: Int? = null
+        val isPrimeActive = primeStatus.equals("active", ignoreCase = true) && !policyPrimePath.isNullOrBlank()
 
         val baseline = readBaseline()
         if (baseline != null) {
@@ -169,10 +184,19 @@ object BaselineRepository {
                     cpuBMin = stockB
                 }
             }
+            if (isPrimeActive && baseline.cpu.prime_khz > 0) {
+                val stockPrime = ConversionUtils.roundToStep(ConversionUtils.khzToMhz(baseline.cpu.prime_khz), 10)
+                if (stockPrime <= KernelConstants.CPU_PRIME_MAX_MHZ) {
+                    cpuPrimeMin = stockPrime
+                }
+            }
         }
 
-        val cllTarget = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
-        val cbTarget = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
+        val cllTarget = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_little_target_khz 2>/dev/null").stdout.toLongOrNull()
+            ?: ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
+        val cbTarget = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_big_target_khz 2>/dev/null").stdout.toLongOrNull()
+            ?: ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
+        val cPrimeTarget = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_prime_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
 
         // Secondary fallback to sysfs if baseline was missing
         if (cpuLLMin == null && !policy0Path.isNullOrBlank()) {
@@ -211,6 +235,24 @@ object BaselineRepository {
                 }
             }
         }
+        if (isPrimeActive && cpuPrimeMin == null && !policyPrimePath.isNullOrBlank()) {
+            if (cPrimeTarget == 0L) {
+                val r = ShellManager.exec("cat $policyPrimePath/cpuinfo_max_freq 2>/dev/null")
+                val khz = r.stdout.toLongOrNull()
+                if (khz != null && khz > 0) {
+                    val stock = ConversionUtils.roundToStep(ConversionUtils.khzToMhz(khz), 10)
+                    if (stock <= KernelConstants.CPU_PRIME_MAX_MHZ) {
+                        cpuPrimeMin = stock
+                    }
+                }
+            } else {
+                val r = ShellManager.exec("cat $policyPrimePath/cpuinfo_min_freq 2>/dev/null")
+                val khz = r.stdout.toLongOrNull()
+                if (khz != null && khz > 0) {
+                    cpuPrimeMin = ConversionUtils.roundToStep(ConversionUtils.khzToMhz(khz), 10)
+                }
+            }
+        }
         if (gpuFreqMin == null || gpuVoltMin == null) {
             val oppContent = ShellManager.exec("cat ${KernelConstants.GPU_WORKING_OPP} 2>/dev/null").stdout
             if (oppContent.isNotBlank()) {
@@ -236,6 +278,8 @@ object BaselineRepository {
         return StockFloors(
             cpuLLMin = cpuLLMin,
             cpuBMin = cpuBMin,
+            cpuPrimeMin = if (isPrimeActive) cpuPrimeMin else null,
+            isPrimeActive = isPrimeActive,
             gpuFreqMin = gpuFreqMin,
             gpuVoltMin = gpuVoltMin
         )

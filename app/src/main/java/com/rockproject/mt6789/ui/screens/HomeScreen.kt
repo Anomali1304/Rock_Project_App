@@ -79,6 +79,12 @@ fun HomeScreen(
                 label = "Big Cluster",
                 value = liveStats.cpuBCurMhz
             )
+            if (liveStats.isPrimeActive) {
+                StatRow(
+                    label = "Prime Cluster",
+                    value = liveStats.cpuPrimeCurMhz
+                )
+            }
             StatRow(
                 label = "Status",
                 value = liveStats.cpuStatus,

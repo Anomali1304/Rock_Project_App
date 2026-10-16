@@ -22,6 +22,7 @@ object KernelConstants {
     const val CPU_OC_ABS_CAP_KHZ = 2600000L
     const val CPU_LL_MAX_MHZ = 2600
     const val CPU_B_MAX_MHZ = 2600
+    const val CPU_PRIME_MAX_MHZ = 2600
     const val GPU_FREQ_MAX_MHZ = 1750
     const val GPU_VOLT_MAX_MV = 1000
 }

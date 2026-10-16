@@ -15,19 +15,24 @@ import com.rockproject.mt6789.ui.components.CardWithBadge
 import com.rockproject.mt6789.ui.components.ControlFieldItem
 
 private enum class CpuPickerType {
-    NONE, LITTLE_GOV, LITTLE_MAX, LITTLE_MIN, BIG_GOV, BIG_MAX, BIG_MIN
+    NONE, LITTLE_GOV, LITTLE_MAX, LITTLE_MIN, BIG_GOV, BIG_MAX, BIG_MIN, PRIME_GOV, PRIME_MAX, PRIME_MIN
 }
 
 @Composable
 fun CpuControlScreen(
     littleControl: CpuControlCluster,
     bigControl: CpuControlCluster,
+    primeControl: CpuControlCluster = CpuControlCluster(),
+    isPrimeActive: Boolean = false,
     onSetLittleGov: (String) -> Unit,
     onSetLittleMin: (Long) -> Unit,
     onSetLittleMax: (Long) -> Unit,
     onSetBigGov: (String) -> Unit,
     onSetBigMin: (Long) -> Unit,
     onSetBigMax: (Long) -> Unit,
+    onSetPrimeGov: (String) -> Unit = {},
+    onSetPrimeMin: (Long) -> Unit = {},
+    onSetPrimeMax: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -94,6 +99,35 @@ fun CpuControlScreen(
             )
         }
 
+        // Prime Cluster Block
+        if (isPrimeActive) {
+            CardWithBadge(
+                badgeText = "CPU · Prime Cluster",
+                badgeIcon = Icons.Default.Memory
+            ) {
+                ControlFieldItem(
+                    label = "Governor",
+                    currentValue = primeControl.currentGovernor,
+                    onClick = { activePicker = CpuPickerType.PRIME_GOV }
+                )
+
+                val primeMaxStr = primeControl.currentMaxKhz?.let { "${it / 1000} MHz" } ?: "—"
+                ControlFieldItem(
+                    label = "Max frequency",
+                    currentValue = primeMaxStr,
+                    onClick = { activePicker = CpuPickerType.PRIME_MAX }
+                )
+
+                val primeMinStr = primeControl.currentMinKhz?.let { "${it / 1000} MHz" } ?: "—"
+                ControlFieldItem(
+                    label = "Min frequency",
+                    currentValue = primeMinStr,
+                    onClick = { activePicker = CpuPickerType.PRIME_MIN },
+                    showDivider = false
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 
@@ -156,6 +190,36 @@ fun CpuControlScreen(
                 selectedItem = bigControl.currentMinKhz,
                 itemLabel = { "${it / 1000} MHz" },
                 onItemSelected = onSetBigMin,
+                onDismiss = { activePicker = CpuPickerType.NONE }
+            )
+        }
+        CpuPickerType.PRIME_GOV -> {
+            BottomSheetPicker(
+                title = "Governor",
+                items = primeControl.availableGovernors,
+                selectedItem = primeControl.currentGovernor,
+                itemLabel = { it },
+                onItemSelected = onSetPrimeGov,
+                onDismiss = { activePicker = CpuPickerType.NONE }
+            )
+        }
+        CpuPickerType.PRIME_MAX -> {
+            BottomSheetPicker(
+                title = "Max frequency",
+                items = primeControl.availableFrequenciesKhz,
+                selectedItem = primeControl.currentMaxKhz,
+                itemLabel = { "${it / 1000} MHz" },
+                onItemSelected = onSetPrimeMax,
+                onDismiss = { activePicker = CpuPickerType.NONE }
+            )
+        }
+        CpuPickerType.PRIME_MIN -> {
+            BottomSheetPicker(
+                title = "Min frequency",
+                items = primeControl.availableFrequenciesKhz,
+                selectedItem = primeControl.currentMinKhz,
+                itemLabel = { "${it / 1000} MHz" },
+                onItemSelected = onSetPrimeMin,
                 onDismiss = { activePicker = CpuPickerType.NONE }
             )
         }

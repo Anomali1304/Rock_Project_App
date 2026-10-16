@@ -115,4 +115,23 @@ fi
         assertFalse(script.contains("@"))
         assertFalse(script.contains("\\$(getprop"))
     }
+
+    @Test
+    fun `test boot script rendering with prime oc active`() {
+        val script = BootApplyManager.renderScript(
+            templateContent = sampleTemplate,
+            isCpuOc = true,
+            cpuLLKhz = 2100000L,
+            cpuBKhz = 2300000L,
+            cpuPrimeKhz = 2500000L,
+            isGpuOc = false,
+            gpuFreqParam = "gpu_target_khz",
+            gpuFreqKhz = 1000000L,
+            gpuVoltRaw = 73500L,
+            controlCommands = emptyList()
+        )
+
+        assertTrue(script.contains("if [ \"\$(cat \"\$P/cpu_prime_status\" 2>/dev/null)\" = \"active\" ]; then"))
+        assertTrue(script.contains("w cpu_prime_target_khz 2500000"))
+    }
 }

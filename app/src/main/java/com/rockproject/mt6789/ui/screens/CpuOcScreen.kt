@@ -21,10 +21,12 @@ import com.rockproject.mt6789.ui.theme.RockTheme
 fun CpuOcScreen(
     cpuLLValue: Int,
     cpuBValue: Int,
+    cpuPrimeValue: Int = 0,
     stockFloors: StockFloors,
     isBusy: Boolean,
     onCpuLLChanged: (Int) -> Unit,
     onCpuBChanged: (Int) -> Unit,
+    onCpuPrimeChanged: (Int) -> Unit = {},
     onSliderDragStart: () -> Unit,
     onSliderDragEnd: () -> Unit,
     onApply: () -> Unit,
@@ -38,6 +40,7 @@ fun CpuOcScreen(
 
     val llMin = stockFloors.cpuLLMin ?: cpuLLValue.coerceAtMost(KernelConstants.CPU_LL_MAX_MHZ)
     val bMin = stockFloors.cpuBMin ?: cpuBValue.coerceAtMost(KernelConstants.CPU_B_MAX_MHZ)
+    val primeMin = stockFloors.cpuPrimeMin ?: cpuPrimeValue.coerceAtMost(KernelConstants.CPU_PRIME_MAX_MHZ)
     val canApply = stockFloors.isCpuKnown && !isBusy
 
     Column(
@@ -78,6 +81,25 @@ fun CpuOcScreen(
                 onValueChange = onCpuBChanged,
                 onValueChangeFinished = onSliderDragEnd
             )
+
+            if (stockFloors.isPrimeActive && stockFloors.cpuPrimeMin != null) {
+                HorizontalDivider(
+                    color = colors.separator,
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+
+                CustomSliderField(
+                    label = "Prime Cluster",
+                    value = cpuPrimeValue,
+                    rangeMin = primeMin,
+                    rangeMax = KernelConstants.CPU_PRIME_MAX_MHZ,
+                    step = 5,
+                    unit = "MHz",
+                    onValueChange = onCpuPrimeChanged,
+                    onValueChangeFinished = onSliderDragEnd
+                )
+            }
 
             Spacer(modifier = Modifier.height(14.dp))
 

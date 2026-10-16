@@ -13,23 +13,68 @@ object HardwareRepository {
         private set
     var cpuPolicy6: String? = null
         private set
+    var cpuPolicyPrime: String? = null
+        private set
+    var cpuPrimeStatus: String = "inactive"
+        private set
     var gpuPowerPolicy: String? = null
         private set
     var gpuFreqParamName: String = "gpu_target_khz"
         private set
+    var cpuLittleTargetParam: String = "cpu_little_target_khz"
+        private set
+    var cpuBigTargetParam: String = "cpu_big_target_khz"
+        private set
+    var cpuPrimeTargetParam: String = "cpu_prime_target_khz"
+        private set
+    var cpuLittleMinParam: String = "cpu_little_min_khz"
+        private set
+    var cpuBigMinParam: String = "cpu_big_min_khz"
+        private set
+    var cpuPrimeMinParam: String = "cpu_prime_min_khz"
+        private set
 
     suspend fun resolveHardwarePaths() {
+        resolveCpuParamNames()
         resolveCpuPolicies()
         resolveGpuPowerPolicy()
         resolveGpuParamName()
     }
 
-    suspend fun resolveCpuPolicies(): Pair<String?, String?> {
+    suspend fun resolveCpuParamNames() {
+        val checkLittleTarget = ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/cpu_little_target_khz && echo yes")
+        cpuLittleTargetParam = if (checkLittleTarget.stdout == "yes") "cpu_little_target_khz" else "cpu_ll_target_khz"
+
+        val checkBigTarget = ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/cpu_big_target_khz && echo yes")
+        cpuBigTargetParam = if (checkBigTarget.stdout == "yes") "cpu_big_target_khz" else "cpu_b_target_khz"
+
+        cpuPrimeTargetParam = "cpu_prime_target_khz"
+
+        val checkLittleMin = ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/cpu_little_min_khz && echo yes")
+        cpuLittleMinParam = if (checkLittleMin.stdout == "yes") "cpu_little_min_khz" else "cpu_ll_min_khz"
+
+        val checkBigMin = ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/cpu_big_min_khz && echo yes")
+        cpuBigMinParam = if (checkBigMin.stdout == "yes") "cpu_big_min_khz" else "cpu_b_min_khz"
+
+        cpuPrimeMinParam = "cpu_prime_min_khz"
+    }
+
+    suspend fun readCpuPrimeStatus(): String {
+        val res = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_prime_status 2>/dev/null")
+        cpuPrimeStatus = if (res.isSuccess && res.stdout.isNotBlank()) {
+            res.stdout.trim().lowercase()
+        } else {
+            "inactive"
+        }
+        return cpuPrimeStatus
+    }
+
+    suspend fun resolveCpuPolicies(): Triple<String?, String?, String?> {
         val res = ShellManager.exec(
             "for d in ${KernelConstants.CPU_POLICY_DIR}/policy*; do [ -d \"\$d\" ] || continue; printf '%s\\t' \"\$d\"; cat \"\$d/related_cpus\" 2>/dev/null | tr '\\n' ' '; printf '\\n'; done 2>/dev/null"
         )
         if (!res.isSuccess || res.stdout.isBlank()) {
-            return cpuPolicy0 to cpuPolicy6
+            return Triple(cpuPolicy0, cpuPolicy6, cpuPolicyPrime)
         }
 
         val parsed = res.stdout.lines().mapNotNull { line ->
@@ -43,14 +88,41 @@ object HardwareRepository {
             } else null
         }.sortedWith(compareBy({ it.firstCpu }, { it.path }))
 
-        if (parsed.size >= 2) {
-            cpuPolicy0 = parsed[0].path
-            cpuPolicy6 = parsed[1].path
-        } else if (parsed.size == 1) {
-            cpuPolicy0 = parsed[0].path
-            cpuPolicy6 = null
+        readCpuPrimeStatus()
+
+        // Match policies against discovered CPU representatives if available
+        val littleRep = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_little_rep_cpu 2>/dev/null").stdout.toLongOrNull()
+            ?: ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_ll_rep_cpu 2>/dev/null").stdout.toLongOrNull()
+        val bigRep = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_big_rep_cpu 2>/dev/null").stdout.toLongOrNull()
+            ?: ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_b_rep_cpu 2>/dev/null").stdout.toLongOrNull()
+        val primeRep = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_prime_rep_cpu 2>/dev/null").stdout.toLongOrNull()
+
+        if (parsed.isNotEmpty()) {
+            cpuPolicy0 = if (littleRep != null && littleRep < 1000) {
+                parsed.find { it.relatedCpus.contains(littleRep.toInt()) }?.path ?: parsed[0].path
+            } else {
+                parsed[0].path
+            }
+
+            cpuPolicy6 = if (bigRep != null && bigRep < 1000) {
+                parsed.find { it.relatedCpus.contains(bigRep.toInt()) }?.path
+                    ?: if (parsed.size >= 2) parsed[1].path else null
+            } else {
+                if (parsed.size >= 2) parsed[1].path else null
+            }
+
+            cpuPolicyPrime = if (cpuPrimeStatus == "active") {
+                if (primeRep != null && primeRep < 1000) {
+                    parsed.find { it.relatedCpus.contains(primeRep.toInt()) }?.path
+                        ?: if (parsed.size >= 3) parsed[2].path else null
+                } else {
+                    if (parsed.size >= 3) parsed[2].path else null
+                }
+            } else {
+                null
+            }
         }
-        return cpuPolicy0 to cpuPolicy6
+        return Triple(cpuPolicy0, cpuPolicy6, cpuPolicyPrime)
     }
 
     suspend fun resolveGpuPowerPolicy(): String? {
@@ -244,8 +316,8 @@ object HardwareRepository {
             )
         }
 
-        val cLLRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>/dev/null")
-        val cBRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>/dev/null")
+        val cLLRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/$cpuLittleTargetParam 2>/dev/null")
+        val cBRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/$cpuBigTargetParam 2>/dev/null")
         val cResultRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_oc_result 2>/dev/null")
         val gFreqRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/$gpuFreqParamName 2>/dev/null")
         val gVoltRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/gpu_target_volt 2>/dev/null")
@@ -265,8 +337,12 @@ object HardwareRepository {
         val parsedCpu = ConversionUtils.parseCpuResult(cResult)
         val parsedGpu = ConversionUtils.parseGpuResult(gResult)
 
+        val cPrimeRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/$cpuPrimeTargetParam 2>/dev/null")
+        val cpuPrime = cPrimeRes.stdout.toLongOrNull() ?: 0L
+
         val effCpuLL = if (parsedCpu != null) ConversionUtils.mhzToKhz(parsedCpu.llMhz) else cpuLL
         val effCpuB = if (parsedCpu != null) ConversionUtils.mhzToKhz(parsedCpu.bMhz) else cpuB
+        val effCpuPrime = if (parsedCpu?.primeMhz != null) ConversionUtils.mhzToKhz(parsedCpu.primeMhz) else cpuPrime
         val effGpuFreq = if (parsedGpu != null && parsedGpu.enabled && parsedGpu.freqMhz != null) {
             ConversionUtils.mhzToKhz(parsedGpu.freqMhz)
         } else gpuFreq
@@ -276,10 +352,18 @@ object HardwareRepository {
 
         val stockCpuLL = stockFloors.cpuLLMin?.let { ConversionUtils.mhzToKhz(it) } ?: 0L
         val stockCpuB = stockFloors.cpuBMin?.let { ConversionUtils.mhzToKhz(it) } ?: 0L
+        val stockCpuPrime = stockFloors.cpuPrimeMin?.let { ConversionUtils.mhzToKhz(it) } ?: 0L
         val stockGpuFreq = stockFloors.gpuFreqMin?.let { ConversionUtils.mhzToKhz(it) } ?: 0L
         val stockGpuVolt = stockFloors.gpuVoltMin?.let { ConversionUtils.mvToRaw(it) } ?: 0L
 
-        val cpuRequestedOc = ConversionUtils.isCpuOcRequested(effCpuLL, effCpuB, stockCpuLL, stockCpuB)
+        val cpuRequestedOc = ConversionUtils.isCpuOcRequested(
+            effLLKhz = effCpuLL,
+            effBKhz = effCpuB,
+            stockLLKhz = stockCpuLL,
+            stockBKhz = stockCpuB,
+            effPrimeKhz = effCpuPrime,
+            stockPrimeKhz = if (stockFloors.isPrimeActive) stockCpuPrime else 0L
+        )
         val gpuRequestedOc = ConversionUtils.isGpuOcRequested(effGpuFreq, effGpuVolt, stockGpuFreq, stockGpuVolt, gpuDisabled)
 
         // Ignore stale FAIL results if no OC is requested
@@ -309,10 +393,12 @@ object HardwareRepository {
     suspend fun refreshLiveHardware(
         gpuOppMap: Map<Int, GpuOppEntry>,
         cpuActive: Boolean,
-        gpuActive: Boolean
+        gpuActive: Boolean,
+        isPrimeActive: Boolean = false
     ): LiveHardwareStats {
         var cllMhz = "—"
         var cbMhz = "—"
+        var cPrimeMhz = "—"
         if (!cpuPolicy0.isNullOrBlank()) {
             val r = ShellManager.exec("cat $cpuPolicy0/scaling_cur_freq 2>/dev/null")
             val khz = r.stdout.toLongOrNull()
@@ -322,6 +408,11 @@ object HardwareRepository {
             val r = ShellManager.exec("cat $cpuPolicy6/scaling_cur_freq 2>/dev/null")
             val khz = r.stdout.toLongOrNull()
             if (khz != null && khz > 0) cbMhz = "${Math.round(ConversionUtils.khzToMhz(khz))} MHz"
+        }
+        if (isPrimeActive && !cpuPolicyPrime.isNullOrBlank()) {
+            val r = ShellManager.exec("cat $cpuPolicyPrime/scaling_cur_freq 2>/dev/null")
+            val khz = r.stdout.toLongOrNull()
+            if (khz != null && khz > 0) cPrimeMhz = "${Math.round(ConversionUtils.khzToMhz(khz))} MHz"
         }
 
         var gpuFreqStr = "—"
@@ -347,6 +438,8 @@ object HardwareRepository {
         return LiveHardwareStats(
             cpuLLCurMhz = cllMhz,
             cpuBCurMhz = cbMhz,
+            cpuPrimeCurMhz = cPrimeMhz,
+            isPrimeActive = isPrimeActive,
             cpuStatus = if (cpuActive) "OC active" else "Stock",
             isCpuActive = cpuActive,
             gpuCurFreqMhz = gpuFreqStr,
@@ -359,6 +452,7 @@ object HardwareRepository {
     suspend fun applyCpu(
         llMhz: Int,
         bMhz: Int,
+        primeMhz: Int? = null,
         stockFloors: StockFloors
     ): Pair<Boolean, String> = ShellManager.runSerializedWrite {
         if (!stockFloors.isCpuKnown) {
@@ -367,15 +461,19 @@ object HardwareRepository {
 
         val stockLL = stockFloors.cpuLLMin!!
         val stockB = stockFloors.cpuBMin!!
-        val requestedOc = llMhz > stockLL || bMhz > stockB
+        val isPrimeSupported = stockFloors.isPrimeActive && stockFloors.cpuPrimeMin != null && primeMhz != null
+        val requestedOc = llMhz > stockLL || bMhz > stockB || (isPrimeSupported && primeMhz!! > stockFloors.cpuPrimeMin!!)
 
         val resultMsg: String
         val isSuccess: Boolean
 
         if (!requestedOc) {
             // Stock request -> write 0 to parameters
-            ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>&1")
-            ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>&1")
+            ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/$cpuLittleTargetParam 2>&1")
+            ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/$cpuBigTargetParam 2>&1")
+            if (stockFloors.isPrimeActive) {
+                ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/$cpuPrimeTargetParam 2>&1")
+            }
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
             ShellManager.exec("echo 2 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
@@ -386,8 +484,12 @@ object HardwareRepository {
         } else {
             val llKhz = ConversionUtils.mhzToKhz(llMhz)
             val bKhz = ConversionUtils.mhzToKhz(bMhz)
-            ShellManager.exec("echo $llKhz > ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>&1")
-            ShellManager.exec("echo $bKhz > ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>&1")
+            ShellManager.exec("echo $llKhz > ${KernelConstants.PARAMS_DIR}/$cpuLittleTargetParam 2>&1")
+            ShellManager.exec("echo $bKhz > ${KernelConstants.PARAMS_DIR}/$cpuBigTargetParam 2>&1")
+            if (isPrimeSupported) {
+                val primeKhz = ConversionUtils.mhzToKhz(primeMhz!!)
+                ShellManager.exec("echo $primeKhz > ${KernelConstants.PARAMS_DIR}/$cpuPrimeTargetParam 2>&1")
+            }
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
             ShellManager.exec("echo 2 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
@@ -404,8 +506,11 @@ object HardwareRepository {
         if (!stockFloors.isCpuKnown) {
             return@runSerializedWrite false to "CPU stock baseline unknown, refusing to restore blind"
         }
-        ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>&1")
-        ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>&1")
+        ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/$cpuLittleTargetParam 2>&1")
+        ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/$cpuBigTargetParam 2>&1")
+        if (stockFloors.isPrimeActive) {
+            ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/$cpuPrimeTargetParam 2>&1")
+        }
         ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
         ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
         ShellManager.exec("echo 2 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
@@ -528,7 +633,11 @@ object HardwareRepository {
     }
 
     private suspend fun readCpuBounds(policyPath: String): Pair<Long, Long> {
-        val minParam = if (policyPath == cpuPolicy0) "cpu_ll_min_khz" else "cpu_b_min_khz"
+        val minParam = when (policyPath) {
+            cpuPolicy0 -> cpuLittleMinParam
+            cpuPolicyPrime -> cpuPrimeMinParam
+            else -> cpuBigMinParam
+        }
         val minRaw = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/$minParam 2>/dev/null").stdout.toLongOrNull() ?: 0L
         val maxRaw = ShellManager.exec("cat $policyPath/scaling_max_freq 2>/dev/null").stdout.toLongOrNull() ?: 0L
         return minRaw to maxRaw
@@ -536,7 +645,11 @@ object HardwareRepository {
 
     private suspend fun reapplyCpuOc(policyPath: String, targetKhz: Long): Boolean {
         return ShellManager.runCpuOcApply {
-            val param = if (policyPath == cpuPolicy0) "cpu_ll_target_khz" else "cpu_b_target_khz"
+            val param = when (policyPath) {
+                cpuPolicy0 -> cpuLittleTargetParam
+                cpuPolicyPrime -> cpuPrimeTargetParam
+                else -> cpuBigTargetParam
+            }
             val target = Math.min(targetKhz, KernelConstants.CPU_OC_ABS_CAP_KHZ)
             ShellManager.exec("echo $target > ${KernelConstants.PARAMS_DIR}/$param 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
@@ -547,7 +660,11 @@ object HardwareRepository {
     }
 
     private suspend fun setCpuFreqLocked(policyPath: String, targetKhz: Long): Pair<Boolean, Long?> {
-        val minParam = if (policyPath == cpuPolicy0) "cpu_ll_min_khz" else "cpu_b_min_khz"
+        val minParam = when (policyPath) {
+            cpuPolicy0 -> cpuLittleMinParam
+            cpuPolicyPrime -> cpuPrimeMinParam
+            else -> cpuBigMinParam
+        }
         for (attempt in 0 until 3) {
             val applied = reapplyCpuOc(policyPath, targetKhz)
             if (!applied) continue
@@ -595,7 +712,11 @@ object HardwareRepository {
             }
         }
 
-        val minParam = if (policyPath == cpuPolicy0) "cpu_ll_min_khz" else "cpu_b_min_khz"
+        val minParam = when (policyPath) {
+            cpuPolicy0 -> cpuLittleMinParam
+            cpuPolicyPrime -> cpuPrimeMinParam
+            else -> cpuBigMinParam
+        }
         val writeOk = ShellManager.exec("echo $targetKhz > ${KernelConstants.PARAMS_DIR}/$minParam 2>&1").isSuccess
         delay(15)
         val got = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/$minParam 2>/dev/null").stdout.toLongOrNull() ?: 0L
@@ -613,7 +734,11 @@ object HardwareRepository {
         targetKhz: Long
     ): Pair<Boolean, String> = ShellManager.runPolicyTask(policyPath) {
         var bounds = readCpuBounds(policyPath)
-        val minParam = if (policyPath == cpuPolicy0) "cpu_ll_min_khz" else "cpu_b_min_khz"
+        val minParam = when (policyPath) {
+            cpuPolicy0 -> cpuLittleMinParam
+            cpuPolicyPrime -> cpuPrimeMinParam
+            else -> cpuBigMinParam
+        }
 
         val isOc = targetKhz > bounds.second
         if (targetKhz > bounds.second) {
@@ -650,7 +775,11 @@ object HardwareRepository {
         val govListRes = ShellManager.exec("cat $policyPath/scaling_available_governors 2>/dev/null")
         val curGovRes = ShellManager.exec("cat $policyPath/scaling_governor 2>/dev/null")
         val freqsRes = ShellManager.exec("cat $policyPath/scaling_available_frequencies 2>/dev/null")
-        val minParam = if (policyPath == cpuPolicy0) "cpu_ll_min_khz" else "cpu_b_min_khz"
+        val minParam = when (policyPath) {
+            cpuPolicy0 -> cpuLittleMinParam
+            cpuPolicyPrime -> cpuPrimeMinParam
+            else -> cpuBigMinParam
+        }
         val curMinRes = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/$minParam 2>/dev/null")
         val curMaxRes = ShellManager.exec("cat $policyPath/scaling_max_freq 2>/dev/null")
 

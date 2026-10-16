@@ -69,11 +69,13 @@ class MainActivity : ComponentActivity() {
 
             val cpuLLSlider by viewModel.cpuLLSlider.collectAsStateWithLifecycle()
             val cpuBSlider by viewModel.cpuBSlider.collectAsStateWithLifecycle()
+            val cpuPrimeSlider by viewModel.cpuPrimeSlider.collectAsStateWithLifecycle()
             val gpuFreqSlider by viewModel.gpuFreqSlider.collectAsStateWithLifecycle()
             val gpuVoltSlider by viewModel.gpuVoltSlider.collectAsStateWithLifecycle()
 
             val cpuLittleControl by viewModel.cpuLittleControl.collectAsStateWithLifecycle()
             val cpuBigControl by viewModel.cpuBigControl.collectAsStateWithLifecycle()
+            val cpuPrimeControl by viewModel.cpuPrimeControl.collectAsStateWithLifecycle()
             val gpuControl by viewModel.gpuControl.collectAsStateWithLifecycle()
 
             val backStack = remember { mutableStateListOf(AppScreen.HOME) }
@@ -267,12 +269,14 @@ class MainActivity : ComponentActivity() {
                                          AppScreen.CPU_OC -> CpuOcScreen(
                                             cpuLLValue = cpuLLSlider,
                                             cpuBValue = cpuBSlider,
+                                            cpuPrimeValue = cpuPrimeSlider,
                                             stockFloors = stockFloors,
                                             isBusy = isBusy,
                                             isDirty = isCpuDirty,
                                             isRestoreVisible = isCpuRestoreVisible,
                                             onCpuLLChanged = { viewModel.onCpuLLChanged(it) },
                                             onCpuBChanged = { viewModel.onCpuBChanged(it) },
+                                            onCpuPrimeChanged = { viewModel.onCpuPrimeChanged(it) },
                                             onSliderDragStart = { viewModel.onSliderDragStart() },
                                             onSliderDragEnd = { viewModel.onSliderDragEnd() },
                                             onApply = { viewModel.applyCpu() },
@@ -295,12 +299,17 @@ class MainActivity : ComponentActivity() {
                                         AppScreen.CPU_CONTROL -> CpuControlScreen(
                                             littleControl = cpuLittleControl,
                                             bigControl = cpuBigControl,
+                                            primeControl = cpuPrimeControl,
+                                            isPrimeActive = stockFloors.isPrimeActive,
                                             onSetLittleGov = { viewModel.setCpuLittleGov(it) },
                                             onSetLittleMin = { viewModel.setCpuLittleMin(it) },
                                             onSetLittleMax = { viewModel.setCpuLittleMax(it) },
                                             onSetBigGov = { viewModel.setCpuBigGov(it) },
                                             onSetBigMin = { viewModel.setCpuBigMin(it) },
-                                            onSetBigMax = { viewModel.setCpuBigMax(it) }
+                                            onSetBigMax = { viewModel.setCpuBigMax(it) },
+                                            onSetPrimeGov = { viewModel.setCpuPrimeGov(it) },
+                                            onSetPrimeMin = { viewModel.setCpuPrimeMin(it) },
+                                            onSetPrimeMax = { viewModel.setCpuPrimeMax(it) }
                                         )
                                         AppScreen.GPU_CONTROL -> GpuControlScreen(
                                             gpuControl = gpuControl,

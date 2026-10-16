@@ -13,19 +13,39 @@ object BootApplyManager {
         isCpuOc: Boolean,
         cpuLLKhz: Long,
         cpuBKhz: Long,
+        cpuPrimeKhz: Long = 0L,
         isGpuOc: Boolean,
         gpuFreqParam: String,
         gpuFreqKhz: Long,
         gpuVoltRaw: Long,
         controlCommands: List<String>
     ): String {
+        val primeLine = if (cpuPrimeKhz > 0L) {
+            """
+  if [ "${'$'}(cat "${'$'}P/cpu_prime_status" 2>/dev/null)" = "active" ]; then
+    w cpu_prime_target_khz $cpuPrimeKhz
+  fi
+            """.trimIndent()
+        } else {
+            ""
+        }
+
         val cpuBlock = if (isCpuOc) {
             """
 cpu_ok=1
 n=0
 while [ "${'$'}n" -lt 3 ]; do
-  w cpu_ll_target_khz $cpuLLKhz
-  w cpu_b_target_khz $cpuBKhz
+  if [ -f "${'$'}P/cpu_little_target_khz" ]; then
+    w cpu_little_target_khz $cpuLLKhz
+  else
+    w cpu_ll_target_khz $cpuLLKhz
+  fi
+  if [ -f "${'$'}P/cpu_big_target_khz" ]; then
+    w cpu_big_target_khz $cpuBKhz
+  else
+    w cpu_b_target_khz $cpuBKhz
+  fi
+$primeLine
   w cpu_oc_apply 1
   w cpu_stats_refresh 1
   w cpu_stats_refresh 2
@@ -81,6 +101,7 @@ done
         isCpuOc: Boolean,
         cpuLLKhz: Long,
         cpuBKhz: Long,
+        cpuPrimeKhz: Long = 0L,
         isGpuOc: Boolean,
         gpuFreqParam: String,
         gpuFreqKhz: Long,
@@ -100,6 +121,7 @@ done
             isCpuOc = isCpuOc,
             cpuLLKhz = cpuLLKhz,
             cpuBKhz = cpuBKhz,
+            cpuPrimeKhz = cpuPrimeKhz,
             isGpuOc = isGpuOc,
             gpuFreqParam = gpuFreqParam,
             gpuFreqKhz = gpuFreqKhz,
@@ -112,6 +134,9 @@ done
             put("cpu_oc", isCpuOc)
             put("cpu_ll_khz", cpuLLKhz)
             put("cpu_b_khz", cpuBKhz)
+            if (cpuPrimeKhz > 0L) {
+                put("cpu_prime_khz", cpuPrimeKhz)
+            }
             put("gpu_oc", isGpuOc)
             put("gpu_freq_param", gpuFreqParam)
             put("gpu_freq_khz", gpuFreqKhz)

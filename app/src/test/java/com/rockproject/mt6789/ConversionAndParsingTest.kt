@@ -47,12 +47,21 @@ class ConversionAndParsingTest {
         assertNotNull(parsed)
         assertEquals(2000.0, parsed!!.llMhz, 0.001)
         assertEquals(2200.0, parsed.bMhz, 0.001)
+        assertNull(parsed.primeMhz)
 
         val outputWithIdx = "OK LL_idx0=2100000KHz b_idx1=2300000KHz"
         val parsedIdx = ConversionUtils.parseCpuResult(outputWithIdx)
         assertNotNull(parsedIdx)
         assertEquals(2100.0, parsedIdx!!.llMhz, 0.001)
         assertEquals(2300.0, parsedIdx.bMhz, 0.001)
+        assertNull(parsedIdx.primeMhz)
+
+        val outputWithPrime = "OK: little=2000000KHz big=2200000KHz prime=2400000KHz policies=3"
+        val parsedPrime = ConversionUtils.parseCpuResult(outputWithPrime)
+        assertNotNull(parsedPrime)
+        assertEquals(2000.0, parsedPrime!!.llMhz, 0.001)
+        assertEquals(2200.0, parsedPrime.bMhz, 0.001)
+        assertEquals(2400.0, parsedPrime.primeMhz!!, 0.001)
 
         assertNull(ConversionUtils.parseCpuResult("INVALID OUTPUT"))
     }
@@ -115,6 +124,11 @@ class ConversionAndParsingTest {
         // Target greater than stock IS OC
         assertTrue(ConversionUtils.isCpuOcRequested(2100000L, 2200000L, stockLL, stockB))
         assertTrue(ConversionUtils.isCpuOcRequested(2000000L, 2300000L, stockLL, stockB))
+
+        // Prime OC logic
+        val stockPrime = 2400000L
+        assertFalse(ConversionUtils.isCpuOcRequested(2000000L, 2200000L, stockLL, stockB, 2400000L, stockPrime))
+        assertTrue(ConversionUtils.isCpuOcRequested(2000000L, 2200000L, stockLL, stockB, 2500000L, stockPrime))
 
         // GPU oc requested logic
         val stockGpuFreq = 1000000L
