@@ -11,8 +11,8 @@ object BootApplyManager {
     fun renderScript(
         templateContent: String,
         isCpuOc: Boolean,
-        cpuLLKhz: Long,
-        cpuBKhz: Long,
+        cpuLittleKhz: Long,
+        cpuBigKhz: Long,
         cpuPrimeKhz: Long = 0L,
         isGpuOc: Boolean,
         gpuFreqParam: String,
@@ -30,33 +30,48 @@ object BootApplyManager {
             ""
         }
 
-        val cpuBlock = if (isCpuOc) {
+        val allow3ghzLine = if (cpuLittleKhz > 2600000L || cpuBigKhz > 2600000L || cpuPrimeKhz > 2600000L) {
             """
-cpu_ok=1
-n=0
-while [ "${'$'}n" -lt 3 ]; do
-  if [ -f "${'$'}P/cpu_little_target_khz" ]; then
-    w cpu_little_target_khz $cpuLLKhz
-  else
-    w cpu_ll_target_khz $cpuLLKhz
+  if [ -f "${'$'}P/${KernelConstants.CPU_ALLOW_3GHZ_PARAM}" ]; then
+    w ${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 1
   fi
-  if [ -f "${'$'}P/cpu_big_target_khz" ]; then
-    w cpu_big_target_khz $cpuBKhz
-  else
-    w cpu_b_target_khz $cpuBKhz
-  fi
-$primeLine
-  w cpu_oc_apply 1
-  w cpu_stats_refresh 1
-  w cpu_stats_refresh 2
-  r=${'$'}(cat "${'$'}P/cpu_oc_result" 2>/dev/null)
-  case "${'$'}r" in
-    FAIL*) cpu_ok=0 ;;
-    *)     cpu_ok=1; break ;;
-  esac
-  n=${'$'}((n+1)); sleep 2
-done
             """.trimIndent()
+        } else {
+            ""
+        }
+
+        val cpuBlock = if (isCpuOc) {
+            val lines = mutableListOf<String>()
+            lines.add("cpu_ok=1")
+            lines.add("n=0")
+            lines.add("while [ \"${'$'}n\" -lt 3 ]; do")
+            if (allow3ghzLine.isNotBlank()) {
+                lines.add(allow3ghzLine)
+            }
+            lines.add("  if [ -f \"${'$'}P/cpu_little_target_khz\" ]; then")
+            lines.add("    w cpu_little_target_khz $cpuLittleKhz")
+            lines.add("  else")
+            lines.add("    w cpu_ll_target_khz $cpuLittleKhz")
+            lines.add("  fi")
+            lines.add("  if [ -f \"${'$'}P/cpu_big_target_khz\" ]; then")
+            lines.add("    w cpu_big_target_khz $cpuBigKhz")
+            lines.add("  else")
+            lines.add("    w cpu_b_target_khz $cpuBigKhz")
+            lines.add("  fi")
+            if (primeLine.isNotBlank()) {
+                lines.add(primeLine)
+            }
+            lines.add("  w cpu_oc_apply 1")
+            lines.add("  w cpu_stats_refresh 1")
+            lines.add("  w cpu_stats_refresh 2")
+            lines.add("  r=${'$'}(cat \"${'$'}P/cpu_oc_result\" 2>/dev/null)")
+            lines.add("  case \"${'$'}r\" in")
+            lines.add("    FAIL*) cpu_ok=0 ;;")
+            lines.add("    *)     cpu_ok=1; break ;;")
+            lines.add("  esac")
+            lines.add("  n=${'$'}((n+1)); sleep 2")
+            lines.add("done")
+            lines.joinToString("\n")
         } else {
             "cpu_ok=1"
         }
@@ -99,8 +114,8 @@ done
     suspend fun saveBootApplyScript(
         context: Context,
         isCpuOc: Boolean,
-        cpuLLKhz: Long,
-        cpuBKhz: Long,
+        cpuLittleKhz: Long,
+        cpuBigKhz: Long,
         cpuPrimeKhz: Long = 0L,
         isGpuOc: Boolean,
         gpuFreqParam: String,
@@ -119,8 +134,8 @@ done
         val script = renderScript(
             templateContent = template,
             isCpuOc = isCpuOc,
-            cpuLLKhz = cpuLLKhz,
-            cpuBKhz = cpuBKhz,
+            cpuLittleKhz = cpuLittleKhz,
+            cpuBigKhz = cpuBigKhz,
             cpuPrimeKhz = cpuPrimeKhz,
             isGpuOc = isGpuOc,
             gpuFreqParam = gpuFreqParam,
@@ -132,10 +147,13 @@ done
         val configJson = JSONObject().apply {
             put("enabled", true)
             put("cpu_oc", isCpuOc)
-            put("cpu_ll_khz", cpuLLKhz)
-            put("cpu_b_khz", cpuBKhz)
+            put("cpu_little_khz", cpuLittleKhz)
+            put("cpu_big_khz", cpuBigKhz)
             if (cpuPrimeKhz > 0L) {
                 put("cpu_prime_khz", cpuPrimeKhz)
+            }
+            if (cpuLittleKhz > 2600000L || cpuBigKhz > 2600000L || cpuPrimeKhz > 2600000L) {
+                put("cpu_oc_allow_3ghz", 1)
             }
             put("gpu_oc", isGpuOc)
             put("gpu_freq_param", gpuFreqParam)

@@ -73,11 +73,11 @@ fun HomeScreen(
 
             StatRow(
                 label = "Little Cluster",
-                value = liveStats.cpuLLCurMhz
+                value = liveStats.cpuLittleCurMhz
             )
             StatRow(
                 label = "Big Cluster",
-                value = liveStats.cpuBCurMhz
+                value = liveStats.cpuBigCurMhz
             )
             if (liveStats.isPrimeActive) {
                 StatRow(

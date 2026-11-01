@@ -14,7 +14,7 @@ class StockFloorDerivationTest {
             {
               "captured_at": 1697150000,
               "gpu": { "freq_khz": 1000000, "volt_raw": 73500, "vsram_raw": 73500 },
-              "cpu": { "ll_khz": 2000000, "b_khz": 2200000 }
+              "cpu": { "little_khz": 2000000, "big_khz": 2200000 }
             }
         """.trimIndent()
 
@@ -23,30 +23,30 @@ class StockFloorDerivationTest {
         assertEquals(1697150000L, parsed!!.captured_at)
         assertEquals(1000000L, parsed.gpu.freq_khz)
         assertEquals(73500L, parsed.gpu.volt_raw)
-        assertEquals(2000000L, parsed.cpu.ll_khz)
-        assertEquals(2200000L, parsed.cpu.b_khz)
+        assertEquals(2000000L, parsed.cpu.little_khz)
+        assertEquals(2200000L, parsed.cpu.big_khz)
     }
 
     @Test
     fun `test stock floor derivation values`() {
         val gpuFreqKhz = 1000000L
         val gpuVoltRaw = 73500L
-        val cpuLLKhz = 2000000L
-        val cpuBKhz = 2200000L
+        val cpuLittleKhz = 2000000L
+        val cpuBigKhz = 2200000L
 
         val stockGpuFreq = ConversionUtils.roundToStep(ConversionUtils.khzToMhz(gpuFreqKhz), 5)
         val stockGpuVolt = Math.round(gpuVoltRaw / 100.0).toInt()
-        val stockLL = ConversionUtils.roundToStep(ConversionUtils.khzToMhz(cpuLLKhz), 10)
-        val stockB = ConversionUtils.roundToStep(ConversionUtils.khzToMhz(cpuBKhz), 10)
+        val stockLittle = ConversionUtils.roundToStep(ConversionUtils.khzToMhz(cpuLittleKhz), 10)
+        val stockBig = ConversionUtils.roundToStep(ConversionUtils.khzToMhz(cpuBigKhz), 10)
 
         assertEquals(1000, stockGpuFreq)
         assertEquals(735, stockGpuVolt)
-        assertEquals(2000, stockLL)
-        assertEquals(2200, stockB)
+        assertEquals(2000, stockLittle)
+        assertEquals(2200, stockBig)
 
         val floors = StockFloors(
-            cpuLLMin = stockLL,
-            cpuBMin = stockB,
+            cpuLittleMin = stockLittle,
+            cpuBigMin = stockBig,
             gpuFreqMin = stockGpuFreq,
             gpuVoltMin = stockGpuVolt
         )
@@ -62,7 +62,7 @@ class StockFloorDerivationTest {
             {
               "captured_at": 1697150000,
               "gpu": { "freq_khz": 1000000, "volt_raw": 73500, "vsram_raw": 73500 },
-              "cpu": { "ll_khz": 2000000, "b_khz": 2200000, "prime_khz": 2400000 }
+              "cpu": { "little_khz": 2000000, "big_khz": 2200000, "prime_khz": 2400000 }
             }
         """.trimIndent()
 
@@ -74,8 +74,8 @@ class StockFloorDerivationTest {
     @Test
     fun `test stock floor derivation values with prime`() {
         val floors2p = StockFloors(
-            cpuLLMin = 2000,
-            cpuBMin = 2200,
+            cpuLittleMin = 2000,
+            cpuBigMin = 2200,
             cpuPrimeMin = null,
             isPrimeActive = false,
             gpuFreqMin = 1000,
@@ -85,8 +85,8 @@ class StockFloorDerivationTest {
         assertTrue(floors2p.isFullyKnown)
 
         val floors3pMissingPrime = StockFloors(
-            cpuLLMin = 2000,
-            cpuBMin = 2200,
+            cpuLittleMin = 2000,
+            cpuBigMin = 2200,
             cpuPrimeMin = null,
             isPrimeActive = true,
             gpuFreqMin = 1000,
@@ -96,8 +96,8 @@ class StockFloorDerivationTest {
         assertFalse(floors3pMissingPrime.isFullyKnown)
 
         val floors3pComplete = StockFloors(
-            cpuLLMin = 2000,
-            cpuBMin = 2200,
+            cpuLittleMin = 2000,
+            cpuBigMin = 2200,
             cpuPrimeMin = 2400,
             isPrimeActive = true,
             gpuFreqMin = 1000,

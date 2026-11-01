@@ -32,21 +32,21 @@ object ConversionUtils {
 
     fun parseCpuResult(text: String?): CpuParsedResult? {
         if (text.isNullOrBlank()) return null
-        val llPattern = Pattern.compile("(?:LL|little)(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
-        val bPattern = Pattern.compile("(?:b|big)(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
+        val littlePattern = Pattern.compile("(?:LL|little)(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
+        val bigPattern = Pattern.compile("(?:b|big)(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
         val primePattern = Pattern.compile("prime(?:_idx\\d+)?=(\\d+)KHz", Pattern.CASE_INSENSITIVE)
 
-        val llMatcher = llPattern.matcher(text)
-        val bMatcher = bPattern.matcher(text)
+        val littleMatcher = littlePattern.matcher(text)
+        val bigMatcher = bigPattern.matcher(text)
         val primeMatcher = primePattern.matcher(text)
 
-        if (llMatcher.find() && bMatcher.find()) {
-            val llKhz = llMatcher.group(1)?.toLongOrNull() ?: return null
-            val bKhz = bMatcher.group(1)?.toLongOrNull() ?: return null
+        if (littleMatcher.find() && bigMatcher.find()) {
+            val littleKhz = littleMatcher.group(1)?.toLongOrNull() ?: return null
+            val bigKhz = bigMatcher.group(1)?.toLongOrNull() ?: return null
             val primeKhz = if (primeMatcher.find()) primeMatcher.group(1)?.toLongOrNull() else null
             return CpuParsedResult(
-                llMhz = khzToMhz(llKhz),
-                bMhz = khzToMhz(bKhz),
+                littleMhz = khzToMhz(littleKhz),
+                bigMhz = khzToMhz(bigKhz),
                 primeMhz = primeKhz?.takeIf { it > 0 }?.let { khzToMhz(it) }
             )
         }
@@ -113,16 +113,16 @@ object ConversionUtils {
     }
 
     fun isCpuOcRequested(
-        effLLKhz: Long,
-        effBKhz: Long,
-        stockLLKhz: Long,
-        stockBKhz: Long,
+        effLittleKhz: Long,
+        effBigKhz: Long,
+        stockLittleKhz: Long,
+        stockBigKhz: Long,
         effPrimeKhz: Long = 0L,
         stockPrimeKhz: Long = 0L
     ): Boolean {
-        val known = stockLLKhz > 0 && stockBKhz > 0
+        val known = stockLittleKhz > 0 && stockBigKhz > 0
         val primeOc = stockPrimeKhz > 0 && effPrimeKhz > stockPrimeKhz
-        return known && (effLLKhz > stockLLKhz || effBKhz > stockBKhz || primeOc)
+        return known && (effLittleKhz > stockLittleKhz || effBigKhz > stockBigKhz || primeOc)
     }
 
     fun isGpuOcRequested(

@@ -19,13 +19,13 @@ import com.rockproject.mt6789.ui.theme.RockTheme
 
 @Composable
 fun CpuOcScreen(
-    cpuLLValue: Int,
-    cpuBValue: Int,
+    cpuLittleValue: Int,
+    cpuBigValue: Int,
     cpuPrimeValue: Int = 0,
     stockFloors: StockFloors,
     isBusy: Boolean,
-    onCpuLLChanged: (Int) -> Unit,
-    onCpuBChanged: (Int) -> Unit,
+    onCpuLittleChanged: (Int) -> Unit,
+    onCpuBigChanged: (Int) -> Unit,
     onCpuPrimeChanged: (Int) -> Unit = {},
     onSliderDragStart: () -> Unit,
     onSliderDragEnd: () -> Unit,
@@ -38,8 +38,8 @@ fun CpuOcScreen(
     val colors = RockTheme.colors
     val scrollState = rememberScrollState()
 
-    val llMin = stockFloors.cpuLLMin ?: cpuLLValue.coerceAtMost(KernelConstants.CPU_LL_MAX_MHZ)
-    val bMin = stockFloors.cpuBMin ?: cpuBValue.coerceAtMost(KernelConstants.CPU_B_MAX_MHZ)
+    val littleMin = stockFloors.cpuLittleMin ?: cpuLittleValue.coerceAtMost(KernelConstants.CPU_LITTLE_MAX_MHZ)
+    val bigMin = stockFloors.cpuBigMin ?: cpuBigValue.coerceAtMost(KernelConstants.CPU_BIG_MAX_MHZ)
     val primeMin = stockFloors.cpuPrimeMin ?: cpuPrimeValue.coerceAtMost(KernelConstants.CPU_PRIME_MAX_MHZ)
     val canApply = stockFloors.isCpuKnown && !isBusy
 
@@ -56,12 +56,12 @@ fun CpuOcScreen(
         ) {
             CustomSliderField(
                 label = "Little Cluster",
-                value = cpuLLValue,
-                rangeMin = llMin,
-                rangeMax = KernelConstants.CPU_LL_MAX_MHZ,
+                value = cpuLittleValue,
+                rangeMin = littleMin,
+                rangeMax = KernelConstants.CPU_LITTLE_MAX_MHZ,
                 step = 5,
                 unit = "MHz",
-                onValueChange = onCpuLLChanged,
+                onValueChange = onCpuLittleChanged,
                 onValueChangeFinished = onSliderDragEnd
             )
 
@@ -73,12 +73,12 @@ fun CpuOcScreen(
 
             CustomSliderField(
                 label = "Big Cluster",
-                value = cpuBValue,
-                rangeMin = bMin,
-                rangeMax = KernelConstants.CPU_B_MAX_MHZ,
+                value = cpuBigValue,
+                rangeMin = bigMin,
+                rangeMax = KernelConstants.CPU_BIG_MAX_MHZ,
                 step = 5,
                 unit = "MHz",
-                onValueChange = onCpuBChanged,
+                onValueChange = onCpuBigChanged,
                 onValueChangeFinished = onSliderDragEnd
             )
 

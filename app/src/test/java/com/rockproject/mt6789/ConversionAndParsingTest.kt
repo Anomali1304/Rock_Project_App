@@ -45,22 +45,22 @@ class ConversionAndParsingTest {
         val output = "OK LL=2000000KHz b=2200000KHz"
         val parsed = ConversionUtils.parseCpuResult(output)
         assertNotNull(parsed)
-        assertEquals(2000.0, parsed!!.llMhz, 0.001)
-        assertEquals(2200.0, parsed.bMhz, 0.001)
+        assertEquals(2000.0, parsed!!.littleMhz, 0.001)
+        assertEquals(2200.0, parsed.bigMhz, 0.001)
         assertNull(parsed.primeMhz)
 
         val outputWithIdx = "OK LL_idx0=2100000KHz b_idx1=2300000KHz"
         val parsedIdx = ConversionUtils.parseCpuResult(outputWithIdx)
         assertNotNull(parsedIdx)
-        assertEquals(2100.0, parsedIdx!!.llMhz, 0.001)
-        assertEquals(2300.0, parsedIdx.bMhz, 0.001)
+        assertEquals(2100.0, parsedIdx!!.littleMhz, 0.001)
+        assertEquals(2300.0, parsedIdx.bigMhz, 0.001)
         assertNull(parsedIdx.primeMhz)
 
         val outputWithPrime = "OK: little=2000000KHz big=2200000KHz prime=2400000KHz policies=3"
         val parsedPrime = ConversionUtils.parseCpuResult(outputWithPrime)
         assertNotNull(parsedPrime)
-        assertEquals(2000.0, parsedPrime!!.llMhz, 0.001)
-        assertEquals(2200.0, parsedPrime.bMhz, 0.001)
+        assertEquals(2000.0, parsedPrime!!.littleMhz, 0.001)
+        assertEquals(2200.0, parsedPrime.bigMhz, 0.001)
         assertEquals(2400.0, parsedPrime.primeMhz!!, 0.001)
 
         assertNull(ConversionUtils.parseCpuResult("INVALID OUTPUT"))
@@ -115,20 +115,20 @@ class ConversionAndParsingTest {
 
     @Test
     fun `test oc requested logic and stale fail handling`() {
-        val stockLL = 2000000L
-        val stockB = 2200000L
+        val stockLittle = 2000000L
+        val stockBig = 2200000L
 
         // Stock frequency equal to ceiling is NOT OC
-        assertFalse(ConversionUtils.isCpuOcRequested(2000000L, 2200000L, stockLL, stockB))
+        assertFalse(ConversionUtils.isCpuOcRequested(2000000L, 2200000L, stockLittle, stockBig))
 
         // Target greater than stock IS OC
-        assertTrue(ConversionUtils.isCpuOcRequested(2100000L, 2200000L, stockLL, stockB))
-        assertTrue(ConversionUtils.isCpuOcRequested(2000000L, 2300000L, stockLL, stockB))
+        assertTrue(ConversionUtils.isCpuOcRequested(2100000L, 2200000L, stockLittle, stockBig))
+        assertTrue(ConversionUtils.isCpuOcRequested(2000000L, 2300000L, stockLittle, stockBig))
 
         // Prime OC logic
         val stockPrime = 2400000L
-        assertFalse(ConversionUtils.isCpuOcRequested(2000000L, 2200000L, stockLL, stockB, 2400000L, stockPrime))
-        assertTrue(ConversionUtils.isCpuOcRequested(2000000L, 2200000L, stockLL, stockB, 2500000L, stockPrime))
+        assertFalse(ConversionUtils.isCpuOcRequested(2000000L, 2200000L, stockLittle, stockBig, 2400000L, stockPrime))
+        assertTrue(ConversionUtils.isCpuOcRequested(2000000L, 2200000L, stockLittle, stockBig, 2500000L, stockPrime))
 
         // GPU oc requested logic
         val stockGpuFreq = 1000000L

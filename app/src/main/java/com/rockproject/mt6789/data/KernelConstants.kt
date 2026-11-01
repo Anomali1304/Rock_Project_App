@@ -3,6 +3,7 @@ package com.rockproject.mt6789.data
 object KernelConstants {
     const val MODULE_NAME = "overclock_mt6789"
     const val PARAMS_DIR = "/sys/module/overclock_mt6789/parameters"
+    const val CPU_ALLOW_3GHZ_PARAM = "cpu_oc_allow_3ghz"
     const val BASE_DIR = "/data/adb/mt6789"
     const val BASELINE_DIR = "/data/adb/mt6789/baseline"
     const val STOCK_BASELINE_JSON = "/data/adb/mt6789/baseline/stock.json"
@@ -19,10 +20,10 @@ object KernelConstants {
     const val CPU_POLICY_DIR = "/sys/devices/system/cpu/cpufreq"
 
     // Absolute caps (max OC limits - explicitly permitted exceptions)
-    const val CPU_OC_ABS_CAP_KHZ = 2600000L
-    const val CPU_LL_MAX_MHZ = 2600
-    const val CPU_B_MAX_MHZ = 2600
-    const val CPU_PRIME_MAX_MHZ = 2600
+    const val CPU_OC_ABS_CAP_KHZ = 3000000L
+    const val CPU_LITTLE_MAX_MHZ = 3000
+    const val CPU_BIG_MAX_MHZ = 3000
+    const val CPU_PRIME_MAX_MHZ = 3000
     const val GPU_FREQ_MAX_MHZ = 1750
     const val GPU_VOLT_MAX_MV = 1000
 }

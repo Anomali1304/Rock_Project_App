@@ -67,8 +67,8 @@ class MainActivity : ComponentActivity() {
             val isCpuRestoreVisible by viewModel.isCpuRestoreVisible.collectAsStateWithLifecycle()
             val isGpuRestoreVisible by viewModel.isGpuRestoreVisible.collectAsStateWithLifecycle()
 
-            val cpuLLSlider by viewModel.cpuLLSlider.collectAsStateWithLifecycle()
-            val cpuBSlider by viewModel.cpuBSlider.collectAsStateWithLifecycle()
+            val cpuLittleSlider by viewModel.cpuLittleSlider.collectAsStateWithLifecycle()
+            val cpuBigSlider by viewModel.cpuBigSlider.collectAsStateWithLifecycle()
             val cpuPrimeSlider by viewModel.cpuPrimeSlider.collectAsStateWithLifecycle()
             val gpuFreqSlider by viewModel.gpuFreqSlider.collectAsStateWithLifecycle()
             val gpuVoltSlider by viewModel.gpuVoltSlider.collectAsStateWithLifecycle()
@@ -267,15 +267,15 @@ class MainActivity : ComponentActivity() {
                                             }
                                         )
                                          AppScreen.CPU_OC -> CpuOcScreen(
-                                            cpuLLValue = cpuLLSlider,
-                                            cpuBValue = cpuBSlider,
+                                            cpuLittleValue = cpuLittleSlider,
+                                            cpuBigValue = cpuBigSlider,
                                             cpuPrimeValue = cpuPrimeSlider,
                                             stockFloors = stockFloors,
                                             isBusy = isBusy,
                                             isDirty = isCpuDirty,
                                             isRestoreVisible = isCpuRestoreVisible,
-                                            onCpuLLChanged = { viewModel.onCpuLLChanged(it) },
-                                            onCpuBChanged = { viewModel.onCpuBChanged(it) },
+                                            onCpuLittleChanged = { viewModel.onCpuLittleChanged(it) },
+                                            onCpuBigChanged = { viewModel.onCpuBigChanged(it) },
                                             onCpuPrimeChanged = { viewModel.onCpuPrimeChanged(it) },
                                             onSliderDragStart = { viewModel.onSliderDragStart() },
                                             onSliderDragEnd = { viewModel.onSliderDragEnd() },

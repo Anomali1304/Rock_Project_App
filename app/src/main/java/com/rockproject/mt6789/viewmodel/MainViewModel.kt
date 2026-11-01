@@ -45,11 +45,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val gpuBrandInfo: StateFlow<HardwareBrandInfo> = _gpuBrandInfo.asStateFlow()
 
     // Slider states (initialized from runtime stock floors / sysfs targets)
-    private val _cpuLLSlider = MutableStateFlow(0)
-    val cpuLLSlider: StateFlow<Int> = _cpuLLSlider.asStateFlow()
+    private val _cpuLittleSlider = MutableStateFlow(0)
+    val cpuLittleSlider: StateFlow<Int> = _cpuLittleSlider.asStateFlow()
 
-    private val _cpuBSlider = MutableStateFlow(0)
-    val cpuBSlider: StateFlow<Int> = _cpuBSlider.asStateFlow()
+    private val _cpuBigSlider = MutableStateFlow(0)
+    val cpuBigSlider: StateFlow<Int> = _cpuBigSlider.asStateFlow()
 
     private val _cpuPrimeSlider = MutableStateFlow(0)
     val cpuPrimeSlider: StateFlow<Int> = _cpuPrimeSlider.asStateFlow()
@@ -95,9 +95,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isGpuDirty = MutableStateFlow(false)
     val isGpuDirty: StateFlow<Boolean> = _isGpuDirty.asStateFlow()
 
-    val isCpuRestoreVisible: StateFlow<Boolean> = combine(_isCpuDirty, _cpuLLSlider, _cpuBSlider, _cpuPrimeSlider, _stockFloors) { dirty, ll, b, prime, floors ->
+    val isCpuRestoreVisible: StateFlow<Boolean> = combine(_isCpuDirty, _cpuLittleSlider, _cpuBigSlider, _cpuPrimeSlider, _stockFloors) { dirty, little, big, prime, floors ->
         val primeExceeds = floors.isPrimeActive && floors.cpuPrimeMin != null && prime > floors.cpuPrimeMin
-        dirty || ll > (floors.cpuLLMin ?: 0) || b > (floors.cpuBMin ?: 0) || primeExceeds
+        dirty || little > (floors.cpuLittleMin ?: 0) || big > (floors.cpuBigMin ?: 0) || primeExceeds
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val isGpuRestoreVisible: StateFlow<Boolean> = combine(_isGpuDirty, _gpuFreqSlider, _gpuVoltSlider, _stockFloors) { dirty, freq, volt, floors ->
@@ -149,37 +149,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             // Attempt stock baseline capture if not overclocked
             BaselineRepository.captureBaselineIfStock(
-                policy0Path = HardwareRepository.cpuPolicy0,
-                policy6Path = HardwareRepository.cpuPolicy6,
+                policyLittlePath = HardwareRepository.cpuPolicyLittle,
+                policyBigPath = HardwareRepository.cpuPolicyBig,
                 policyPrimePath = HardwareRepository.cpuPolicyPrime,
                 gpuFreqParamName = HardwareRepository.gpuFreqParamName
             )
 
             // Derive stock floors
             val floors = BaselineRepository.deriveStockFloors(
-                policy0Path = HardwareRepository.cpuPolicy0,
-                policy6Path = HardwareRepository.cpuPolicy6,
+                policyLittlePath = HardwareRepository.cpuPolicyLittle,
+                policyBigPath = HardwareRepository.cpuPolicyBig,
                 policyPrimePath = HardwareRepository.cpuPolicyPrime,
                 primeStatus = HardwareRepository.cpuPrimeStatus
             )
             _stockFloors.value = floors
 
             // Set initial slider values from kernel or floors
-            val cLL = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/${HardwareRepository.cpuLittleTargetParam} 2>/dev/null").stdout.toLongOrNull()
+            val cLittle = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/${HardwareRepository.cpuLittleTargetParam} 2>/dev/null").stdout.toLongOrNull()
                 ?: ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_ll_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
-            val cB = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/${HardwareRepository.cpuBigTargetParam} 2>/dev/null").stdout.toLongOrNull()
+            val cBig = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/${HardwareRepository.cpuBigTargetParam} 2>/dev/null").stdout.toLongOrNull()
                 ?: ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_b_target_khz 2>/dev/null").stdout.toLongOrNull() ?: 0L
             val cPrime = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/${HardwareRepository.cpuPrimeTargetParam} 2>/dev/null").stdout.toLongOrNull() ?: 0L
             val cResult = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_oc_result 2>/dev/null").stdout
             val parsedCpu = ConversionUtils.parseCpuResult(cResult)
 
-            if (floors.cpuLLMin != null) {
-                val initLL = if (parsedCpu != null) parsedCpu.llMhz.toInt() else if (cLL > 0) (cLL / 1000).toInt() else floors.cpuLLMin
-                _cpuLLSlider.value = initLL.coerceIn(floors.cpuLLMin, KernelConstants.CPU_LL_MAX_MHZ)
+            if (floors.cpuLittleMin != null) {
+                val initLittle = if (parsedCpu != null) parsedCpu.littleMhz.toInt() else if (cLittle > 0) (cLittle / 1000).toInt() else floors.cpuLittleMin
+                _cpuLittleSlider.value = initLittle.coerceIn(floors.cpuLittleMin, KernelConstants.CPU_LITTLE_MAX_MHZ)
             }
-            if (floors.cpuBMin != null) {
-                val initB = if (parsedCpu != null) parsedCpu.bMhz.toInt() else if (cB > 0) (cB / 1000).toInt() else floors.cpuBMin
-                _cpuBSlider.value = initB.coerceIn(floors.cpuBMin, KernelConstants.CPU_B_MAX_MHZ)
+            if (floors.cpuBigMin != null) {
+                val initBig = if (parsedCpu != null) parsedCpu.bigMhz.toInt() else if (cBig > 0) (cBig / 1000).toInt() else floors.cpuBigMin
+                _cpuBigSlider.value = initBig.coerceIn(floors.cpuBigMin, KernelConstants.CPU_BIG_MAX_MHZ)
             }
             if (floors.isPrimeActive && floors.cpuPrimeMin != null) {
                 val initPrime = if (parsedCpu?.primeMhz != null) parsedCpu.primeMhz.toInt() else if (cPrime > 0) (cPrime / 1000).toInt() else floors.cpuPrimeMin
@@ -264,15 +264,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         isDraggingSlider = false
     }
 
-    fun onCpuLLChanged(value: Int) {
-        val min = _stockFloors.value.cpuLLMin ?: 0
-        _cpuLLSlider.value = value.coerceIn(min, KernelConstants.CPU_LL_MAX_MHZ)
+    fun onCpuLittleChanged(value: Int) {
+        val min = _stockFloors.value.cpuLittleMin ?: 0
+        _cpuLittleSlider.value = value.coerceIn(min, KernelConstants.CPU_LITTLE_MAX_MHZ)
         _isCpuDirty.value = true
     }
 
-    fun onCpuBChanged(value: Int) {
-        val min = _stockFloors.value.cpuBMin ?: 0
-        _cpuBSlider.value = value.coerceIn(min, KernelConstants.CPU_B_MAX_MHZ)
+    fun onCpuBigChanged(value: Int) {
+        val min = _stockFloors.value.cpuBigMin ?: 0
+        _cpuBigSlider.value = value.coerceIn(min, KernelConstants.CPU_BIG_MAX_MHZ)
         _isCpuDirty.value = true
     }
 
@@ -309,8 +309,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val floors = _stockFloors.value
                 val (ok, msg) = HardwareRepository.applyCpu(
-                    llMhz = _cpuLLSlider.value,
-                    bMhz = _cpuBSlider.value,
+                    littleMhz = _cpuLittleSlider.value,
+                    bigMhz = _cpuBigSlider.value,
                     primeMhz = if (floors.isPrimeActive) _cpuPrimeSlider.value else null,
                     stockFloors = floors
                 )
@@ -331,12 +331,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val floors = _stockFloors.value
-                if (floors.cpuLLMin == null || floors.cpuBMin == null || (floors.isPrimeActive && floors.cpuPrimeMin == null)) {
+                if (floors.cpuLittleMin == null || floors.cpuBigMin == null || (floors.isPrimeActive && floors.cpuPrimeMin == null)) {
                     showToast("CPU stock baseline unknown, refusing to restore blind")
                     return@launch
                 }
-                _cpuLLSlider.value = floors.cpuLLMin
-                _cpuBSlider.value = floors.cpuBMin
+                _cpuLittleSlider.value = floors.cpuLittleMin
+                _cpuBigSlider.value = floors.cpuBigMin
                 if (floors.isPrimeActive && floors.cpuPrimeMin != null) {
                     _cpuPrimeSlider.value = floors.cpuPrimeMin
                 }
@@ -457,28 +457,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val isCpuOc = _moduleState.value.isCpuActive
         val isGpuOc = _moduleState.value.isGpuActive
 
-        val cpuLLKhz = ConversionUtils.mhzToKhz(_cpuLLSlider.value)
-        val cpuBKhz = ConversionUtils.mhzToKhz(_cpuBSlider.value)
+        val cpuLittleKhz = ConversionUtils.mhzToKhz(_cpuLittleSlider.value)
+        val cpuBigKhz = ConversionUtils.mhzToKhz(_cpuBigSlider.value)
         val gpuFreqKhz = ConversionUtils.mhzToKhz(_gpuFreqSlider.value)
         val gpuVoltRaw = ConversionUtils.mvToRaw(_gpuVoltSlider.value)
 
         val controlCmds = mutableListOf<String>()
-        val p0 = HardwareRepository.cpuPolicy0
-        val p6 = HardwareRepository.cpuPolicy6
+        val pLittle = HardwareRepository.cpuPolicyLittle
+        val pBig = HardwareRepository.cpuPolicyBig
 
         val littleGov = _cpuLittleControl.value.currentGovernor.trim()
-        if (!p0.isNullOrBlank() && littleGov.isNotBlank() && littleGov != "—") {
+        if (!pLittle.isNullOrBlank() && littleGov.isNotBlank() && littleGov != "—") {
             controlCmds.add("""
-f="$p0/scaling_governor"
+f="${'$'}pLittle/scaling_governor"
 if [ -f "${'$'}f" ]; then
   chmod 0644 "${'$'}f"
   echo '$littleGov' > "${'$'}f" 2>>"${'$'}LOG"
   chmod 0444 "${'$'}f"
   cur=${'$'}(cat "${'$'}f" 2>/dev/null)
   if [ "${'$'}cur" = '$littleGov' ]; then
-    log "policy Little ($p0) gov set to $littleGov"
+    log "policy Little ($pLittle) gov set to $littleGov"
   else
-    log "ERROR: policy Little ($p0) gov failed: expected '$littleGov', got '${'$'}cur'"
+    log "ERROR: policy Little ($pLittle) gov failed: expected '$littleGov', got '${'$'}cur'"
     cpu_ok=0
   fi
 fi
@@ -486,18 +486,18 @@ fi
         }
 
         val bigGov = _cpuBigControl.value.currentGovernor.trim()
-        if (!p6.isNullOrBlank() && bigGov.isNotBlank() && bigGov != "—") {
+        if (!pBig.isNullOrBlank() && bigGov.isNotBlank() && bigGov != "—") {
             controlCmds.add("""
-f="$p6/scaling_governor"
+f="${'$'}pBig/scaling_governor"
 if [ -f "${'$'}f" ]; then
   chmod 0644 "${'$'}f"
   echo '$bigGov' > "${'$'}f" 2>>"${'$'}LOG"
   chmod 0444 "${'$'}f"
   cur=${'$'}(cat "${'$'}f" 2>/dev/null)
   if [ "${'$'}cur" = '$bigGov' ]; then
-    log "policy Big ($p6) gov set to $bigGov"
+    log "policy Big ($pBig) gov set to $bigGov"
   else
-    log "ERROR: policy Big ($p6) gov failed: expected '$bigGov', got '${'$'}cur'"
+    log "ERROR: policy Big ($pBig) gov failed: expected '$bigGov', got '${'$'}cur'"
     cpu_ok=0
   fi
 fi
@@ -512,7 +512,7 @@ fi
         val primeGov = _cpuPrimeControl.value.currentGovernor.trim()
         if (floors.isPrimeActive && !pPrime.isNullOrBlank() && primeGov.isNotBlank() && primeGov != "—") {
             controlCmds.add("""
-f="$pPrime/scaling_governor"
+f="${'$'}pPrime/scaling_governor"
 if [ -f "${'$'}f" ]; then
   chmod 0644 "${'$'}f"
   echo '$primeGov' > "${'$'}f" 2>>"${'$'}LOG"
@@ -531,8 +531,8 @@ fi
         BootApplyManager.saveBootApplyScript(
             context = getApplication(),
             isCpuOc = isCpuOc,
-            cpuLLKhz = cpuLLKhz,
-            cpuBKhz = cpuBKhz,
+            cpuLittleKhz = cpuLittleKhz,
+            cpuBigKhz = cpuBigKhz,
             cpuPrimeKhz = cpuPrimeKhz,
             isGpuOc = isGpuOc,
             gpuFreqParam = HardwareRepository.gpuFreqParamName,
@@ -545,11 +545,11 @@ fi
     // Direct Control operations
     fun refreshControls() {
         viewModelScope.launch {
-            val p0 = HardwareRepository.cpuPolicy0
-            val p6 = HardwareRepository.cpuPolicy6
+            val pLittle = HardwareRepository.cpuPolicyLittle
+            val pBig = HardwareRepository.cpuPolicyBig
             val pPrime = HardwareRepository.cpuPolicyPrime
-            val little = HardwareRepository.readCpuClusterControl(p0)
-            val big = HardwareRepository.readCpuClusterControl(p6)
+            val little = HardwareRepository.readCpuClusterControl(pLittle)
+            val big = HardwareRepository.readCpuClusterControl(pBig)
             val prime = if (_stockFloors.value.isPrimeActive && !pPrime.isNullOrBlank()) {
                 HardwareRepository.readCpuClusterControl(pPrime)
             } else {
@@ -597,9 +597,9 @@ fi
     }
 
     fun setCpuLittleGov(gov: String) {
-        val p0 = HardwareRepository.cpuPolicy0 ?: return
+        val pLittle = HardwareRepository.cpuPolicyLittle ?: return
         viewModelScope.launch {
-            val (ok, msg) = HardwareRepository.setCpuGovernor(p0, "Little", gov)
+            val (ok, msg) = HardwareRepository.setCpuGovernor(pLittle, "Little", gov)
             showToast(msg)
             if (ok) {
                 refreshControls()
@@ -609,9 +609,9 @@ fi
     }
 
     fun setCpuLittleMin(targetKhz: Long) {
-        val p0 = HardwareRepository.cpuPolicy0 ?: return
+        val pLittle = HardwareRepository.cpuPolicyLittle ?: return
         viewModelScope.launch {
-            val (ok, msg) = HardwareRepository.setCpuPolicyMin(p0, "Little", targetKhz)
+            val (ok, msg) = HardwareRepository.setCpuPolicyMin(pLittle, "Little", targetKhz)
             showToast(msg)
             refreshControls()
             if (ok) scheduleBootApplyRegen()
@@ -619,9 +619,9 @@ fi
     }
 
     fun setCpuLittleMax(targetKhz: Long) {
-        val p0 = HardwareRepository.cpuPolicy0 ?: return
+        val pLittle = HardwareRepository.cpuPolicyLittle ?: return
         viewModelScope.launch {
-            val (ok, msg) = HardwareRepository.setCpuPolicyMax(p0, "Little", targetKhz)
+            val (ok, msg) = HardwareRepository.setCpuPolicyMax(pLittle, "Little", targetKhz)
             showToast(msg)
             refreshControls()
             if (ok) scheduleBootApplyRegen()
@@ -629,9 +629,9 @@ fi
     }
 
     fun setCpuBigGov(gov: String) {
-        val p6 = HardwareRepository.cpuPolicy6 ?: return
+        val pBig = HardwareRepository.cpuPolicyBig ?: return
         viewModelScope.launch {
-            val (ok, msg) = HardwareRepository.setCpuGovernor(p6, "Big", gov)
+            val (ok, msg) = HardwareRepository.setCpuGovernor(pBig, "Big", gov)
             showToast(msg)
             if (ok) {
                 refreshControls()
@@ -641,9 +641,9 @@ fi
     }
 
     fun setCpuBigMin(targetKhz: Long) {
-        val p6 = HardwareRepository.cpuPolicy6 ?: return
+        val pBig = HardwareRepository.cpuPolicyBig ?: return
         viewModelScope.launch {
-            val (ok, msg) = HardwareRepository.setCpuPolicyMin(p6, "Big", targetKhz)
+            val (ok, msg) = HardwareRepository.setCpuPolicyMin(pBig, "Big", targetKhz)
             showToast(msg)
             refreshControls()
             if (ok) scheduleBootApplyRegen()
@@ -651,9 +651,9 @@ fi
     }
 
     fun setCpuBigMax(targetKhz: Long) {
-        val p6 = HardwareRepository.cpuPolicy6 ?: return
+        val pBig = HardwareRepository.cpuPolicyBig ?: return
         viewModelScope.launch {
-            val (ok, msg) = HardwareRepository.setCpuPolicyMax(p6, "Big", targetKhz)
+            val (ok, msg) = HardwareRepository.setCpuPolicyMax(pBig, "Big", targetKhz)
             showToast(msg)
             refreshControls()
             if (ok) scheduleBootApplyRegen()

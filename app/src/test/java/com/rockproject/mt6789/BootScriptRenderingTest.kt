@@ -62,8 +62,8 @@ fi
         val script = BootApplyManager.renderScript(
             templateContent = sampleTemplate,
             isCpuOc = true,
-            cpuLLKhz = 2100000L,
-            cpuBKhz = 2300000L,
+            cpuLittleKhz = 2100000L,
+            cpuBigKhz = 2300000L,
             isGpuOc = true,
             gpuFreqParam = "gpu_target_khz",
             gpuFreqKhz = 1200000L,
@@ -86,7 +86,9 @@ fi
         assertTrue(script.contains("overclock_mt6789 not loaded"))
 
         // Must contain 3-attempt loop and OC targets
+        assertTrue(script.contains("cpu_little_target_khz 2100000"))
         assertTrue(script.contains("cpu_ll_target_khz 2100000"))
+        assertTrue(script.contains("cpu_big_target_khz 2300000"))
         assertTrue(script.contains("cpu_b_target_khz 2300000"))
         assertTrue(script.contains("gpu_target_khz 1200000"))
         assertTrue(script.contains("gpu_target_volt 80000"))
@@ -101,8 +103,8 @@ fi
         val script = BootApplyManager.renderScript(
             templateContent = sampleTemplate,
             isCpuOc = false,
-            cpuLLKhz = 2000000L,
-            cpuBKhz = 2200000L,
+            cpuLittleKhz = 2000000L,
+            cpuBigKhz = 2200000L,
             isGpuOc = false,
             gpuFreqParam = "gpu_target_khz",
             gpuFreqKhz = 1000000L,
@@ -121,8 +123,8 @@ fi
         val script = BootApplyManager.renderScript(
             templateContent = sampleTemplate,
             isCpuOc = true,
-            cpuLLKhz = 2100000L,
-            cpuBKhz = 2300000L,
+            cpuLittleKhz = 2100000L,
+            cpuBigKhz = 2300000L,
             cpuPrimeKhz = 2500000L,
             isGpuOc = false,
             gpuFreqParam = "gpu_target_khz",
@@ -133,5 +135,25 @@ fi
 
         assertTrue(script.contains("if [ \"\$(cat \"\$P/cpu_prime_status\" 2>/dev/null)\" = \"active\" ]; then"))
         assertTrue(script.contains("w cpu_prime_target_khz 2500000"))
+    }
+
+    @Test
+    fun `test boot script rendering with 3ghz oc active`() {
+        val script = BootApplyManager.renderScript(
+            templateContent = sampleTemplate,
+            isCpuOc = true,
+            cpuLittleKhz = 2200000L,
+            cpuBigKhz = 3000000L,
+            cpuPrimeKhz = 3000000L,
+            isGpuOc = false,
+            gpuFreqParam = "gpu_target_khz",
+            gpuFreqKhz = 1000000L,
+            gpuVoltRaw = 73500L,
+            controlCommands = emptyList()
+        )
+
+        assertTrue(script.contains("if [ -f \"\$P/cpu_oc_allow_3ghz\" ]; then"))
+        assertTrue(script.contains("w cpu_oc_allow_3ghz 1"))
+        assertTrue(script.contains("cpu_big_target_khz 3000000"))
     }
 }
