@@ -15,6 +15,11 @@ object ConversionUtils {
 
     fun rawToMv(raw: Number): Double = raw.toDouble() / 100.0
 
+    fun getMaxCpuMhzForStock(stockMhz: Int?): Int {
+        if (stockMhz == null) return 2600
+        return if (stockMhz <= 1540) 3000 else 2600
+    }
+
     fun roundToStep(value: Double, step: Int): Int {
         if (step <= 0) return Math.round(value).toInt()
         return (Math.round(value / step.toDouble()) * step).toInt()

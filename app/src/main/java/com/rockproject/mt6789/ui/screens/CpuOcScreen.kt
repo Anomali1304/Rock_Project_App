@@ -16,6 +16,7 @@ import com.rockproject.mt6789.ui.components.CardWithBadge
 import com.rockproject.mt6789.ui.components.CustomSliderField
 import com.rockproject.mt6789.ui.components.OcActionButtons
 import com.rockproject.mt6789.ui.theme.RockTheme
+import com.rockproject.mt6789.util.ConversionUtils
 
 @Composable
 fun CpuOcScreen(
@@ -38,9 +39,13 @@ fun CpuOcScreen(
     val colors = RockTheme.colors
     val scrollState = rememberScrollState()
 
-    val littleMin = stockFloors.cpuLittleMin ?: cpuLittleValue.coerceAtMost(KernelConstants.CPU_LITTLE_MAX_MHZ)
-    val bigMin = stockFloors.cpuBigMin ?: cpuBigValue.coerceAtMost(KernelConstants.CPU_BIG_MAX_MHZ)
-    val primeMin = stockFloors.cpuPrimeMin ?: cpuPrimeValue.coerceAtMost(KernelConstants.CPU_PRIME_MAX_MHZ)
+    val littleMax = ConversionUtils.getMaxCpuMhzForStock(stockFloors.cpuLittleMin)
+    val bigMax = ConversionUtils.getMaxCpuMhzForStock(stockFloors.cpuBigMin)
+    val primeMax = ConversionUtils.getMaxCpuMhzForStock(stockFloors.cpuPrimeMin)
+
+    val littleMin = stockFloors.cpuLittleMin ?: cpuLittleValue.coerceAtMost(littleMax)
+    val bigMin = stockFloors.cpuBigMin ?: cpuBigValue.coerceAtMost(bigMax)
+    val primeMin = stockFloors.cpuPrimeMin ?: cpuPrimeValue.coerceAtMost(primeMax)
     val canApply = stockFloors.isCpuKnown && !isBusy
 
     Column(
@@ -58,7 +63,7 @@ fun CpuOcScreen(
                 label = "Little Cluster",
                 value = cpuLittleValue,
                 rangeMin = littleMin,
-                rangeMax = KernelConstants.CPU_LITTLE_MAX_MHZ,
+                rangeMax = littleMax,
                 step = 5,
                 unit = "MHz",
                 onValueChange = onCpuLittleChanged,
@@ -75,7 +80,7 @@ fun CpuOcScreen(
                 label = "Big Cluster",
                 value = cpuBigValue,
                 rangeMin = bigMin,
-                rangeMax = KernelConstants.CPU_BIG_MAX_MHZ,
+                rangeMax = bigMax,
                 step = 5,
                 unit = "MHz",
                 onValueChange = onCpuBigChanged,
@@ -93,7 +98,7 @@ fun CpuOcScreen(
                     label = "Prime Cluster",
                     value = cpuPrimeValue,
                     rangeMin = primeMin,
-                    rangeMax = KernelConstants.CPU_PRIME_MAX_MHZ,
+                    rangeMax = primeMax,
                     step = 5,
                     unit = "MHz",
                     onValueChange = onCpuPrimeChanged,

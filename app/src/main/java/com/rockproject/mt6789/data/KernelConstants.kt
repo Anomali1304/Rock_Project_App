@@ -4,6 +4,8 @@ object KernelConstants {
     const val MODULE_NAME = "overclock_mt6789"
     const val PARAMS_DIR = "/sys/module/overclock_mt6789/parameters"
     const val CPU_ALLOW_3GHZ_PARAM = "cpu_oc_allow_3ghz"
+    const val CPU_VOLT_MAX_DELTA_PARAM = "cpu_volt_max_delta_raw"
+    const val CPU_VOLT_ABS_MAX_PARAM = "cpu_volt_abs_max_raw"
     const val BASE_DIR = "/data/adb/mt6789"
     const val BASELINE_DIR = "/data/adb/mt6789/baseline"
     const val STOCK_BASELINE_JSON = "/data/adb/mt6789/baseline/stock.json"

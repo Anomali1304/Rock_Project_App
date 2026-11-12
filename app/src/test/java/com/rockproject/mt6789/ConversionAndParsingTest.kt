@@ -1,5 +1,6 @@
 package com.rockproject.mt6789
 
+import com.rockproject.mt6789.model.*
 import com.rockproject.mt6789.util.ConversionUtils
 import org.junit.Assert.*
 import org.junit.Test
@@ -138,5 +139,14 @@ class ConversionAndParsingTest {
         assertTrue(ConversionUtils.isGpuOcRequested(1100000L, 73500L, stockGpuFreq, stockGpuVolt, disabled = false))
         assertTrue(ConversionUtils.isGpuOcRequested(1000000L, 75000L, stockGpuFreq, stockGpuVolt, disabled = false))
         assertFalse(ConversionUtils.isGpuOcRequested(1100000L, 75000L, stockGpuFreq, stockGpuVolt, disabled = true))
+    }
+
+    @Test
+    fun `test stock mhz slider limit derivation`() {
+        assertEquals(2600, ConversionUtils.getMaxCpuMhzForStock(2000))
+        assertEquals(2600, ConversionUtils.getMaxCpuMhzForStock(2200))
+        assertEquals(3000, ConversionUtils.getMaxCpuMhzForStock(1540))
+        assertEquals(3000, ConversionUtils.getMaxCpuMhzForStock(500))
+        assertEquals(2600, ConversionUtils.getMaxCpuMhzForStock(null))
     }
 }

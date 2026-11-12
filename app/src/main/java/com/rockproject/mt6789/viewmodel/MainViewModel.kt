@@ -174,16 +174,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val parsedCpu = ConversionUtils.parseCpuResult(cResult)
 
             if (floors.cpuLittleMin != null) {
+                val maxLittle = ConversionUtils.getMaxCpuMhzForStock(floors.cpuLittleMin)
                 val initLittle = if (parsedCpu != null) parsedCpu.littleMhz.toInt() else if (cLittle > 0) (cLittle / 1000).toInt() else floors.cpuLittleMin
-                _cpuLittleSlider.value = initLittle.coerceIn(floors.cpuLittleMin, KernelConstants.CPU_LITTLE_MAX_MHZ)
+                _cpuLittleSlider.value = initLittle.coerceIn(floors.cpuLittleMin, maxLittle)
             }
             if (floors.cpuBigMin != null) {
+                val maxBig = ConversionUtils.getMaxCpuMhzForStock(floors.cpuBigMin)
                 val initBig = if (parsedCpu != null) parsedCpu.bigMhz.toInt() else if (cBig > 0) (cBig / 1000).toInt() else floors.cpuBigMin
-                _cpuBigSlider.value = initBig.coerceIn(floors.cpuBigMin, KernelConstants.CPU_BIG_MAX_MHZ)
+                _cpuBigSlider.value = initBig.coerceIn(floors.cpuBigMin, maxBig)
             }
             if (floors.isPrimeActive && floors.cpuPrimeMin != null) {
+                val maxPrime = ConversionUtils.getMaxCpuMhzForStock(floors.cpuPrimeMin)
                 val initPrime = if (parsedCpu?.primeMhz != null) parsedCpu.primeMhz.toInt() else if (cPrime > 0) (cPrime / 1000).toInt() else floors.cpuPrimeMin
-                _cpuPrimeSlider.value = initPrime.coerceIn(floors.cpuPrimeMin, KernelConstants.CPU_PRIME_MAX_MHZ)
+                _cpuPrimeSlider.value = initPrime.coerceIn(floors.cpuPrimeMin, maxPrime)
             }
 
             val gFreq = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/${HardwareRepository.gpuFreqParamName} 2>/dev/null").stdout.toLongOrNull() ?: 0L
@@ -266,19 +269,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onCpuLittleChanged(value: Int) {
         val min = _stockFloors.value.cpuLittleMin ?: 0
-        _cpuLittleSlider.value = value.coerceIn(min, KernelConstants.CPU_LITTLE_MAX_MHZ)
+        val max = ConversionUtils.getMaxCpuMhzForStock(_stockFloors.value.cpuLittleMin)
+        _cpuLittleSlider.value = value.coerceIn(min, max)
         _isCpuDirty.value = true
     }
 
     fun onCpuBigChanged(value: Int) {
         val min = _stockFloors.value.cpuBigMin ?: 0
-        _cpuBigSlider.value = value.coerceIn(min, KernelConstants.CPU_BIG_MAX_MHZ)
+        val max = ConversionUtils.getMaxCpuMhzForStock(_stockFloors.value.cpuBigMin)
+        _cpuBigSlider.value = value.coerceIn(min, max)
         _isCpuDirty.value = true
     }
 
     fun onCpuPrimeChanged(value: Int) {
         val min = _stockFloors.value.cpuPrimeMin ?: 0
-        _cpuPrimeSlider.value = value.coerceIn(min, KernelConstants.CPU_PRIME_MAX_MHZ)
+        val max = ConversionUtils.getMaxCpuMhzForStock(_stockFloors.value.cpuPrimeMin)
+        _cpuPrimeSlider.value = value.coerceIn(min, max)
         _isCpuDirty.value = true
     }
 

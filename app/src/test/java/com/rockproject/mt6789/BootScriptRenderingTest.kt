@@ -1,6 +1,7 @@
 package com.rockproject.mt6789
 
 import com.rockproject.mt6789.data.BootApplyManager
+import com.rockproject.mt6789.data.KernelConstants
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -152,6 +153,10 @@ fi
             controlCommands = emptyList()
         )
 
+        assertTrue(script.contains("if [ -f \"\$P/cpu_volt_max_delta_raw\" ]; then"))
+        assertTrue(script.contains("w cpu_volt_max_delta_raw 50000"))
+        assertTrue(script.contains("if [ -f \"\$P/cpu_volt_abs_max_raw\" ]; then"))
+        assertTrue(script.contains("w cpu_volt_abs_max_raw 115000"))
         assertTrue(script.contains("if [ -f \"\$P/cpu_oc_allow_3ghz\" ]; then"))
         assertTrue(script.contains("w cpu_oc_allow_3ghz 1"))
         assertTrue(script.contains("cpu_big_target_khz 3000000"))

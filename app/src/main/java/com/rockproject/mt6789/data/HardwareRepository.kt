@@ -489,6 +489,8 @@ object HardwareRepository {
 
             if (littleKhz > 2600000L || bigKhz > 2600000L || primeKhz > 2600000L) {
                 ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
+                ShellManager.exec("echo 50000 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM} 2>&1")
+                ShellManager.exec("echo 115000 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_ABS_MAX_PARAM} 2>&1")
             }
 
             ShellManager.exec("echo $littleKhz > ${KernelConstants.PARAMS_DIR}/$cpuLittleTargetParam 2>&1")
@@ -660,6 +662,8 @@ object HardwareRepository {
             val target = Math.min(targetKhz, KernelConstants.CPU_OC_ABS_CAP_KHZ)
             if (target > 2600000L) {
                 ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
+                ShellManager.exec("echo 50000 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM} 2>&1")
+                ShellManager.exec("echo 115000 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_ABS_MAX_PARAM} 2>&1")
             }
             ShellManager.exec("echo $target > ${KernelConstants.PARAMS_DIR}/$param 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
