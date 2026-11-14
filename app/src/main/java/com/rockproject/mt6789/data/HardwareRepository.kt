@@ -169,6 +169,13 @@ object HardwareRepository {
             for f in /sys/devices/soc0/soc_id /sys/devices/soc0/family /sys/devices/soc0/machine /sys/devices/system/soc/soc0/soc_id /sys/devices/system/soc/soc0/family /sys/devices/system/soc/soc0/machine; do [ -r "${'$'}f" ] && { printf '%s=' "${'$'}f"; cat "${'$'}f" 2>/dev/null; printf '\n'; }; done;
             printf '\nDT_MODEL='; tr '\0' '\n' < /proc/device-tree/model 2>/dev/null;
             printf '\nDT_COMPATIBLE='; tr '\0' '\n' < /proc/device-tree/compatible 2>/dev/null;
+            printf '\nCPU_PRESENT='; cat /sys/devices/system/cpu/present 2>/dev/null;
+            printf '\nCPU_SYS=\n';
+            for c in /sys/devices/system/cpu/cpu[0-9]*; do [ -d "${'$'}c" ] || continue; idx="${'$'}{c##*cpu}"; case "${'$'}idx" in *[!0-9]*|"") continue;; esac; midr=$(cat "${'$'}c/regs/identification/midr_el1" 2>/dev/null); compat=$(tr '\0' ',' < "${'$'}c/of_node/compatible" 2>/dev/null); printf 'cpu=%s midr=%s compat=%s\n' "${'$'}idx" "${'$'}midr" "${'$'}compat"; done;
+            printf '\nDT_CPUS=\n';
+            for d in /proc/device-tree/cpus/cpu@*; do [ -d "${'$'}d" ] || continue; compat=$(tr '\0' ',' < "${'$'}d/compatible" 2>/dev/null); printf '%s compat=%s\n' "${'$'}{d##*/}" "${'$'}compat"; done;
+            printf '\nCPU_POLICIES=\n';
+            for p in ${KernelConstants.CPU_POLICY_DIR}/policy*; do [ -d "${'$'}p" ] || continue; rel=$(cat "${'$'}p/related_cpus" 2>/dev/null | tr '\n' ' '); printf '%s:%s\n' "${'$'}{p##*/}" "${'$'}rel"; done;
             printf '\nCPUINFO=\n'; cat /proc/cpuinfo 2>/dev/null
             printf '\nARCH=\n'; uname -m 2>/dev/null
             getprop ro.product.cpu.abi 2>/dev/null
@@ -199,7 +206,11 @@ object HardwareRepository {
         val dtModel = clean(if (dtModelMatcher.find()) dtModelMatcher.group(1) else "")
         val dtCompatibleMatcher = Pattern.compile("^DT_COMPATIBLE=(.*)$", Pattern.MULTILINE).matcher(raw)
         val dtCompatible = clean(if (dtCompatibleMatcher.find()) dtCompatibleMatcher.group(1) else "")
-        val cpuText = raw.substringAfter("CPUINFO=", "")
+        val presentText = raw.substringAfter("CPU_PRESENT=", "").substringBefore("\nCPU_SYS=").trim()
+        val sysCpuText = raw.substringAfter("CPU_SYS=", "").substringBefore("\nDT_CPUS=")
+        val dtCpusText = raw.substringAfter("DT_CPUS=", "").substringBefore("\nCPU_POLICIES=")
+        val policiesText = raw.substringAfter("CPU_POLICIES=", "").substringBefore("\nCPUINFO=")
+        val cpuText = raw.substringAfter("CPUINFO=", "").substringBefore("\nARCH=")
         val archText = raw.substringAfter("ARCH=", "").trim()
 
         val haystack = listOf(socModel, socManufacturer, platform, productBoard, hardware, dtModel, dtCompatible, cpuText, archText, raw).joinToString(" ")
@@ -220,23 +231,13 @@ object HardwareRepository {
         }
         if (family.isEmpty()) family = if (model.isNotEmpty()) model else fallbackManufacturer
 
-        val partPattern = Pattern.compile("^CPU part\\s*:\\s*(0x[0-9a-f]+)", Pattern.CASE_INSENSITIVE or Pattern.MULTILINE)
-        val partMatcher = partPattern.matcher(cpuText)
-        val counts = mutableMapOf<String, Int>()
-        val partName = mapOf("0xd05" to "Cortex-A55", "0xd0b" to "Cortex-A76", "0xd0a" to "Cortex-A75", "0xd08" to "Cortex-A72", "0xd03" to "Cortex-A53")
-        while (partMatcher.find()) {
-            val code = partMatcher.group(1)?.lowercase() ?: ""
-            val name = partName[code]
-            if (name != null) {
-                counts[name] = (counts[name] ?: 0) + 1
-            }
-        }
-        val archParts = counts.entries.map { "${it.value}× ${it.key}" }
-        val cpuCountPattern = Pattern.compile("^processor\\s*:", Pattern.CASE_INSENSITIVE or Pattern.MULTILINE).matcher(cpuText)
-        var cpuCount = 0
-        while (cpuCountPattern.find()) cpuCount++
-        val coresList = archParts.ifEmpty { if (cpuCount > 0) listOf("$cpuCount× CPU cores") else emptyList() }
-        val footer = coresList.filter { it.isNotEmpty() }.joinToString(" · ")
+        val footer = ConversionUtils.parseCpuArchFooter(
+            presentText = presentText,
+            sysCpuText = sysCpuText,
+            dtCpusText = dtCpusText,
+            policiesText = policiesText,
+            cpuInfoText = cpuText
+        )
 
         return HardwareBrandInfo(
             cpuBrandName = family,
@@ -478,6 +479,9 @@ object HardwareRepository {
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
             ShellManager.exec("echo 2 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
+            if (stockFloors.isPrimeActive) {
+                ShellManager.exec("echo 3 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
+            }
             val res = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_oc_result 2>/dev/null").stdout
             val failed = res.contains("FAIL", ignoreCase = true) && !res.contains("disabled", ignoreCase = true) && !res.contains("stock restored", ignoreCase = true)
             isSuccess = !failed
@@ -501,6 +505,9 @@ object HardwareRepository {
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
             ShellManager.exec("echo 2 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
+            if (stockFloors.isPrimeActive) {
+                ShellManager.exec("echo 3 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
+            }
             val res = ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_oc_result 2>/dev/null").stdout
             val failed = ConversionUtils.classifyResult(res) == "fail"
             isSuccess = !failed
@@ -523,6 +530,9 @@ object HardwareRepository {
         ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
         ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
         ShellManager.exec("echo 2 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
+        if (stockFloors.isPrimeActive) {
+            ShellManager.exec("echo 3 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
+        }
         ShellManager.exec("cat ${KernelConstants.PARAMS_DIR}/cpu_oc_result 2>/dev/null")
         true to "CPU restored to stock"
     }

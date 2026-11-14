@@ -136,6 +136,7 @@ fi
 
         assertTrue(script.contains("if [ \"\$(cat \"\$P/cpu_prime_status\" 2>/dev/null)\" = \"active\" ]; then"))
         assertTrue(script.contains("w cpu_prime_target_khz 2500000"))
+        assertTrue(script.contains("w cpu_stats_refresh 3"))
     }
 
     @Test

@@ -149,4 +149,87 @@ class ConversionAndParsingTest {
         assertEquals(3000, ConversionUtils.getMaxCpuMhzForStock(500))
         assertEquals(2600, ConversionUtils.getMaxCpuMhzForStock(null))
     }
+
+    @Test
+    fun `test dynamic cpu core and cortex detection`() {
+        // 1) Offline Big core in /proc/cpuinfo still detected via midr_el1 and policy sibling
+        val sysCpu2Cluster = """
+            cpu=0 midr=0x00000000412fd050 compat=arm,cortex-a55,arm,armv8
+            cpu=1 midr=0x00000000412fd050 compat=arm,cortex-a55,arm,armv8
+            cpu=2 midr=0x00000000412fd050 compat=arm,cortex-a55,arm,armv8
+            cpu=3 midr=0x00000000412fd050 compat=arm,cortex-a55,arm,armv8
+            cpu=4 midr=0x00000000412fd050 compat=arm,cortex-a55,arm,armv8
+            cpu=5 midr=0x00000000412fd050 compat=arm,cortex-a55,arm,armv8
+            cpu=6 midr=0x00000000413fd0b1 compat=
+            cpu=7 midr= compat=
+        """.trimIndent()
+        val policies2Cluster = """
+            policy0:0 1 2 3 4 5
+            policy6:6 7
+        """.trimIndent()
+        val cpuInfoPartial = """
+            processor	: 0
+            CPU implementer	: 0x41
+            CPU part	: 0x0d05
+
+            processor	: 6
+            CPU implementer	: 0x41
+            CPU part	: 0xd0b
+        """.trimIndent()
+
+        assertEquals(
+            "6× Cortex-A55 · 2× Cortex-A76",
+            ConversionUtils.parseCpuArchFooter("0-7", sysCpu2Cluster, "", policies2Cluster, cpuInfoPartial)
+        )
+
+        // 2) Tri-cluster SoC with Cortex-A55, Cortex-A78, and Cortex-X1
+        val sysCpu3Cluster = """
+            cpu=0 midr=0x00000000412fd050 compat=arm,cortex-a55
+            cpu=1 midr=0x00000000412fd050 compat=arm,cortex-a55
+            cpu=2 midr=0x00000000412fd050 compat=arm,cortex-a55
+            cpu=3 midr=0x00000000412fd050 compat=arm,cortex-a55
+            cpu=4 midr=0x00000000411fd410 compat=arm,cortex-a78
+            cpu=5 midr=0x00000000411fd410 compat=arm,cortex-a78
+            cpu=6 midr=0x00000000411fd410 compat=arm,cortex-a78
+            cpu=7 midr=0x00000000411fd440 compat=arm,cortex-x1
+        """.trimIndent()
+        val policies3Cluster = """
+            policy0:0 1 2 3
+            policy4:4 5 6
+            policy7:7
+        """.trimIndent()
+
+        assertEquals(
+            "4× Cortex-A55 · 3× Cortex-A78 · 1× Cortex-X1",
+            ConversionUtils.parseCpuArchFooter("0-7", sysCpu3Cluster, "", policies3Cluster, "")
+        )
+
+        // 3) Tri-cluster SoC detected solely from /proc/cpuinfo + policies (no midr/compat)
+        val cpuInfoTri = """
+            processor	: 0
+            CPU implementer	: 0x41
+            CPU part	: 0xd05
+
+            processor	: 4
+            CPU implementer	: 0x41
+            CPU part	: 0xd0b
+
+            processor	: 6
+            CPU implementer	: 0x41
+            CPU part	: 0xd41
+        """.trimIndent()
+        val policiesTri = """
+            policy0:0 1 2 3
+            policy4:4 5
+            policy6:6 7
+        """.trimIndent()
+
+        assertEquals(
+            "4× Cortex-A55 · 2× Cortex-A76 · 2× Cortex-A78",
+            ConversionUtils.parseCpuArchFooter("0-7", "", "", policiesTri, cpuInfoTri)
+        )
+
+        // 4) Unknown ARM part is never dropped
+        assertEquals("ARM 0xd99", ConversionUtils.resolveArmPartName(0x41, 0xd99))
+    }
 }
