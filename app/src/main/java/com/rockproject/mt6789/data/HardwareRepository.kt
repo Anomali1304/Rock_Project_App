@@ -475,7 +475,8 @@ object HardwareRepository {
             if (stockFloors.isPrimeActive) {
                 ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/$cpuPrimeTargetParam 2>&1")
             }
-            ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
+            ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} && echo 0 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
+            ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_4GHZ_PARAM} && echo 0 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_4GHZ_PARAM} 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
             ShellManager.exec("echo 2 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
@@ -491,10 +492,13 @@ object HardwareRepository {
             val bigKhz = ConversionUtils.mhzToKhz(bigMhz)
             val primeKhz = if (isPrimeSupported) ConversionUtils.mhzToKhz(primeMhz!!) else 0L
 
-            if (littleKhz > 2600000L || bigKhz > 2600000L || primeKhz > 2600000L) {
-                ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
-                ShellManager.exec("echo 50000 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM} 2>&1")
-                ShellManager.exec("echo 115000 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_ABS_MAX_PARAM} 2>&1")
+            val maxTargetKhz = maxOf(littleKhz, bigKhz, primeKhz)
+            val voltRelaxation = ConversionUtils.getCpuVoltRelaxation(maxTargetKhz)
+            if (voltRelaxation != null) {
+                ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} && echo 1 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
+                ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_4GHZ_PARAM} && echo 1 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_4GHZ_PARAM} 2>&1")
+                ShellManager.exec("echo ${voltRelaxation.maxDeltaRaw} > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM} 2>&1")
+                ShellManager.exec("echo ${voltRelaxation.absMaxRaw} > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_ABS_MAX_PARAM} 2>&1")
             }
 
             ShellManager.exec("echo $littleKhz > ${KernelConstants.PARAMS_DIR}/$cpuLittleTargetParam 2>&1")
@@ -526,7 +530,8 @@ object HardwareRepository {
         if (stockFloors.isPrimeActive) {
             ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/$cpuPrimeTargetParam 2>&1")
         }
-        ShellManager.exec("echo 0 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
+        ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} && echo 0 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
+        ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_4GHZ_PARAM} && echo 0 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_4GHZ_PARAM} 2>&1")
         ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")
         ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
         ShellManager.exec("echo 2 > ${KernelConstants.PARAMS_DIR}/cpu_stats_refresh 2>&1")
@@ -670,10 +675,12 @@ object HardwareRepository {
                 else -> cpuBigTargetParam
             }
             val target = Math.min(targetKhz, KernelConstants.CPU_OC_ABS_CAP_KHZ)
-            if (target > 2600000L) {
-                ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
-                ShellManager.exec("echo 50000 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM} 2>&1")
-                ShellManager.exec("echo 115000 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_ABS_MAX_PARAM} 2>&1")
+            val voltRelaxation = ConversionUtils.getCpuVoltRelaxation(target)
+            if (voltRelaxation != null) {
+                ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} && echo 1 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 2>&1")
+                ShellManager.exec("test -f ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_4GHZ_PARAM} && echo 1 > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_ALLOW_4GHZ_PARAM} 2>&1")
+                ShellManager.exec("echo ${voltRelaxation.maxDeltaRaw} > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM} 2>&1")
+                ShellManager.exec("echo ${voltRelaxation.absMaxRaw} > ${KernelConstants.PARAMS_DIR}/${KernelConstants.CPU_VOLT_ABS_MAX_PARAM} 2>&1")
             }
             ShellManager.exec("echo $target > ${KernelConstants.PARAMS_DIR}/$param 2>&1")
             ShellManager.exec("echo 1 > ${KernelConstants.PARAMS_DIR}/cpu_oc_apply 2>&1")

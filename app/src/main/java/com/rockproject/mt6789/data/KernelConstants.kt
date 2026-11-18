@@ -4,6 +4,7 @@ object KernelConstants {
     const val MODULE_NAME = "overclock_mt6789"
     const val PARAMS_DIR = "/sys/module/overclock_mt6789/parameters"
     const val CPU_ALLOW_3GHZ_PARAM = "cpu_oc_allow_3ghz"
+    const val CPU_ALLOW_4GHZ_PARAM = "cpu_oc_allow_4ghz"
     const val CPU_VOLT_MAX_DELTA_PARAM = "cpu_volt_max_delta_raw"
     const val CPU_VOLT_ABS_MAX_PARAM = "cpu_volt_abs_max_raw"
     const val BASE_DIR = "/data/adb/mt6789"
@@ -22,10 +23,10 @@ object KernelConstants {
     const val CPU_POLICY_DIR = "/sys/devices/system/cpu/cpufreq"
 
     // Absolute caps (max OC limits - explicitly permitted exceptions)
-    const val CPU_OC_ABS_CAP_KHZ = 3000000L
-    const val CPU_LITTLE_MAX_MHZ = 3000
-    const val CPU_BIG_MAX_MHZ = 3000
-    const val CPU_PRIME_MAX_MHZ = 3000
+    const val CPU_OC_ABS_CAP_KHZ = 4550000L
+    const val CPU_LITTLE_MAX_MHZ = 4550
+    const val CPU_BIG_MAX_MHZ = 4550
+    const val CPU_PRIME_MAX_MHZ = 4550
     const val GPU_FREQ_MAX_MHZ = 1750
     const val GPU_VOLT_MAX_MV = 1000
 }

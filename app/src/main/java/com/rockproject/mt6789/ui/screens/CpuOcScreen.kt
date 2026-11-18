@@ -108,8 +108,20 @@ fun CpuOcScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            val maxSelectedMhz = maxOf(
+                cpuLittleValue,
+                cpuBigValue,
+                if (stockFloors.isPrimeActive) cpuPrimeValue else 0
+            )
+            val voltRelaxation = ConversionUtils.getCpuVoltRelaxation(ConversionUtils.mhzToKhz(maxSelectedMhz))
+            val voltInfoText = if (voltRelaxation != null) {
+                "SVS handles voltage autonomously. Auto voltage relaxation for >2600 MHz: delta=${voltRelaxation.maxDeltaRaw}, abs_max=${voltRelaxation.absMaxRaw}."
+            } else {
+                "No explicit voltage - SVS handles voltage autonomously."
+            }
+
             Text(
-                text = "No explicit voltage - SVS handles voltage autonomously. Kernel enforces <= stock +60%.",
+                text = voltInfoText,
                 color = colors.labelTertiary,
                 fontSize = 12.5.sp,
                 lineHeight = 17.sp

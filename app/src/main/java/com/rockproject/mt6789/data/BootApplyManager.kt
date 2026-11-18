@@ -3,6 +3,7 @@ package com.rockproject.mt6789.data
 import android.content.Context
 import com.rockproject.mt6789.model.BootResult
 import com.rockproject.mt6789.root.ShellManager
+import com.rockproject.mt6789.util.ConversionUtils
 import org.json.JSONObject
 import java.io.InputStreamReader
 
@@ -30,16 +31,21 @@ object BootApplyManager {
             ""
         }
 
-        val allow3ghzLine = if (cpuLittleKhz > 2600000L || cpuBigKhz > 2600000L || cpuPrimeKhz > 2600000L) {
+        val maxTargetKhz = maxOf(cpuLittleKhz, cpuBigKhz, cpuPrimeKhz)
+        val voltRelaxation = ConversionUtils.getCpuVoltRelaxation(maxTargetKhz)
+        val allow3ghzLine = if (voltRelaxation != null) {
             """
   if [ -f "${'$'}P/${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM}" ]; then
-    w ${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM} 50000
+    w ${KernelConstants.CPU_VOLT_MAX_DELTA_PARAM} ${voltRelaxation.maxDeltaRaw}
   fi
   if [ -f "${'$'}P/${KernelConstants.CPU_VOLT_ABS_MAX_PARAM}" ]; then
-    w ${KernelConstants.CPU_VOLT_ABS_MAX_PARAM} 115000
+    w ${KernelConstants.CPU_VOLT_ABS_MAX_PARAM} ${voltRelaxation.absMaxRaw}
   fi
   if [ -f "${'$'}P/${KernelConstants.CPU_ALLOW_3GHZ_PARAM}" ]; then
     w ${KernelConstants.CPU_ALLOW_3GHZ_PARAM} 1
+  fi
+  if [ -f "${'$'}P/${KernelConstants.CPU_ALLOW_4GHZ_PARAM}" ]; then
+    w ${KernelConstants.CPU_ALLOW_4GHZ_PARAM} 1
   fi
             """.trimIndent()
         } else {
@@ -161,10 +167,13 @@ done
             if (cpuPrimeKhz > 0L) {
                 put("cpu_prime_khz", cpuPrimeKhz)
             }
-            if (cpuLittleKhz > 2600000L || cpuBigKhz > 2600000L || cpuPrimeKhz > 2600000L) {
+            val maxTargetKhz = maxOf(cpuLittleKhz, cpuBigKhz, cpuPrimeKhz)
+            val voltRelaxation = ConversionUtils.getCpuVoltRelaxation(maxTargetKhz)
+            if (voltRelaxation != null) {
                 put("cpu_oc_allow_3ghz", 1)
-                put("cpu_volt_max_delta_raw", 50000)
-                put("cpu_volt_abs_max_raw", 115000)
+                put("cpu_oc_allow_4ghz", 1)
+                put("cpu_volt_max_delta_raw", voltRelaxation.maxDeltaRaw)
+                put("cpu_volt_abs_max_raw", voltRelaxation.absMaxRaw)
             }
             put("gpu_oc", isGpuOc)
             put("gpu_freq_param", gpuFreqParam)

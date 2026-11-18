@@ -160,6 +160,30 @@ fi
         assertTrue(script.contains("w cpu_volt_abs_max_raw 115000"))
         assertTrue(script.contains("if [ -f \"\$P/cpu_oc_allow_3ghz\" ]; then"))
         assertTrue(script.contains("w cpu_oc_allow_3ghz 1"))
+        assertTrue(script.contains("if [ -f \"\$P/cpu_oc_allow_4ghz\" ]; then"))
+        assertTrue(script.contains("w cpu_oc_allow_4ghz 1"))
         assertTrue(script.contains("cpu_big_target_khz 3000000"))
+    }
+
+    @Test
+    fun `test boot script rendering with 4ghz+ oc scales voltage relaxation`() {
+        val script = BootApplyManager.renderScript(
+            templateContent = sampleTemplate,
+            isCpuOc = true,
+            cpuLittleKhz = 4550000L,
+            cpuBigKhz = 2600000L,
+            cpuPrimeKhz = 2600000L,
+            isGpuOc = false,
+            gpuFreqParam = "gpu_target_khz",
+            gpuFreqKhz = 1000000L,
+            gpuVoltRaw = 73500L,
+            controlCommands = emptyList()
+        )
+
+        assertTrue(script.contains("w cpu_volt_max_delta_raw 125000"))
+        assertTrue(script.contains("w cpu_volt_abs_max_raw 190000"))
+        assertTrue(script.contains("w cpu_oc_allow_3ghz 1"))
+        assertTrue(script.contains("w cpu_oc_allow_4ghz 1"))
+        assertTrue(script.contains("cpu_little_target_khz 4550000"))
     }
 }

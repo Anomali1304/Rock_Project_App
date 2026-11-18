@@ -115,3 +115,8 @@ data class GpuControlState(
     val currentMinOppIdx: Int? = null,
     val currentMaxOppIdx: Int? = null
 )
+
+data class CpuVoltRelaxation(
+    val maxDeltaRaw: Long,
+    val absMaxRaw: Long
+)
