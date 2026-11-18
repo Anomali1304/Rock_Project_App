@@ -170,7 +170,7 @@ fi
         val script = BootApplyManager.renderScript(
             templateContent = sampleTemplate,
             isCpuOc = true,
-            cpuLittleKhz = 4550000L,
+            cpuLittleKhz = 4095000L,
             cpuBigKhz = 2600000L,
             cpuPrimeKhz = 2600000L,
             isGpuOc = false,
@@ -180,10 +180,10 @@ fi
             controlCommands = emptyList()
         )
 
-        assertTrue(script.contains("w cpu_volt_max_delta_raw 125000"))
-        assertTrue(script.contains("w cpu_volt_abs_max_raw 190000"))
+        assertTrue(script.contains("w cpu_volt_max_delta_raw 85000"))
+        assertTrue(script.contains("w cpu_volt_abs_max_raw 130625"))
         assertTrue(script.contains("w cpu_oc_allow_3ghz 1"))
         assertTrue(script.contains("w cpu_oc_allow_4ghz 1"))
-        assertTrue(script.contains("cpu_little_target_khz 4550000"))
+        assertTrue(script.contains("cpu_little_target_khz 4095000"))
     }
 }

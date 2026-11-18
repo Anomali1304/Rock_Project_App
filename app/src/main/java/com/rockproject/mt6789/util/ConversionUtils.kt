@@ -18,16 +18,15 @@ object ConversionUtils {
 
     fun getMaxCpuMhzForStock(stockMhz: Int?): Int {
         if (stockMhz == null) return 2600
-        return if (stockMhz <= 1540) 4550 else 2600
+        return if (stockMhz <= 1540) 4095 else 2600
     }
 
     fun getCpuVoltRelaxation(maxTargetKhz: Long): CpuVoltRelaxation? {
         if (maxTargetKhz <= 2600000L) return null
         return when {
             maxTargetKhz <= 3000000L -> CpuVoltRelaxation(maxDeltaRaw = 50000L, absMaxRaw = 115000L)
-            maxTargetKhz <= 3500000L -> CpuVoltRelaxation(maxDeltaRaw = 75000L, absMaxRaw = 140000L)
-            maxTargetKhz <= 4000000L -> CpuVoltRelaxation(maxDeltaRaw = 100000L, absMaxRaw = 165000L)
-            else -> CpuVoltRelaxation(maxDeltaRaw = 125000L, absMaxRaw = 190000L)
+            maxTargetKhz <= 3500000L -> CpuVoltRelaxation(maxDeltaRaw = 75000L, absMaxRaw = 130625L)
+            else -> CpuVoltRelaxation(maxDeltaRaw = 85000L, absMaxRaw = 130625L)
         }
     }
 

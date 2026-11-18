@@ -22,11 +22,11 @@ object KernelConstants {
 
     const val CPU_POLICY_DIR = "/sys/devices/system/cpu/cpufreq"
 
-    // Absolute caps (max OC limits - explicitly permitted exceptions)
-    const val CPU_OC_ABS_CAP_KHZ = 4550000L
-    const val CPU_LITTLE_MAX_MHZ = 4550
-    const val CPU_BIG_MAX_MHZ = 4550
-    const val CPU_PRIME_MAX_MHZ = 4550
+    // Absolute caps (max OC limits - 12-bit LUT_FREQ hardware limit 4095 MHz)
+    const val CPU_OC_ABS_CAP_KHZ = 4095000L
+    const val CPU_LITTLE_MAX_MHZ = 4095
+    const val CPU_BIG_MAX_MHZ = 4095
+    const val CPU_PRIME_MAX_MHZ = 4095
     const val GPU_FREQ_MAX_MHZ = 1750
     const val GPU_VOLT_MAX_MV = 1000
 }

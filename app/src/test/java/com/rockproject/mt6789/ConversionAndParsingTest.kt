@@ -145,8 +145,8 @@ class ConversionAndParsingTest {
     fun `test stock mhz slider limit derivation`() {
         assertEquals(2600, ConversionUtils.getMaxCpuMhzForStock(2000))
         assertEquals(2600, ConversionUtils.getMaxCpuMhzForStock(2200))
-        assertEquals(4550, ConversionUtils.getMaxCpuMhzForStock(1540))
-        assertEquals(4550, ConversionUtils.getMaxCpuMhzForStock(500))
+        assertEquals(4095, ConversionUtils.getMaxCpuMhzForStock(1540))
+        assertEquals(4095, ConversionUtils.getMaxCpuMhzForStock(500))
         assertEquals(2600, ConversionUtils.getMaxCpuMhzForStock(null))
     }
 
@@ -154,9 +154,9 @@ class ConversionAndParsingTest {
     fun `test tiered cpu voltage relaxation`() {
         assertNull(ConversionUtils.getCpuVoltRelaxation(2600000L))
         assertEquals(CpuVoltRelaxation(50000L, 115000L), ConversionUtils.getCpuVoltRelaxation(3000000L))
-        assertEquals(CpuVoltRelaxation(75000L, 140000L), ConversionUtils.getCpuVoltRelaxation(3500000L))
-        assertEquals(CpuVoltRelaxation(100000L, 165000L), ConversionUtils.getCpuVoltRelaxation(4000000L))
-        assertEquals(CpuVoltRelaxation(125000L, 190000L), ConversionUtils.getCpuVoltRelaxation(4550000L))
+        assertEquals(CpuVoltRelaxation(75000L, 130625L), ConversionUtils.getCpuVoltRelaxation(3500000L))
+        assertEquals(CpuVoltRelaxation(85000L, 130625L), ConversionUtils.getCpuVoltRelaxation(4000000L))
+        assertEquals(CpuVoltRelaxation(85000L, 130625L), ConversionUtils.getCpuVoltRelaxation(4095000L))
     }
 
     @Test
